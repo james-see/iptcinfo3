@@ -121,7 +121,7 @@ if sys.version_info < (2, 3):
 
 doclines = __doc__.split("\n")
 
-version = '1.9.2-rc6'
+version = '1.9.2-rc7'
 zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
 setup(name='IPTCInfo',
       version=version,
