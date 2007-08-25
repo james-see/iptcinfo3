@@ -1,0 +1,7 @@
+(^|/)\.bzr($|/)
+(^|/)\.hg($|/)
+(^|/)\.hgtags($|/)
+^iptcinfo.log$
+^iptcinfo.state$
+^iptcinfo.state.old$
+^iptcinfo.state.journal$
