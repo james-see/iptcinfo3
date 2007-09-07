@@ -1,6 +1,6 @@
-#!/bin/userenv python
-# vim: mode=python fenc=utf-8 fileformat=unix:
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# vim: mode=python fenc=utf-8 fileformat=unix:
 # Author: 2004-2006 Gulácsi Tamás
 #
 # Ported from Josh Carter's Perl IPTCInfo.pm by Tam?s Gul?csi
@@ -13,7 +13,7 @@
 # it under the same terms as Python itself.
 #
 # VERSION = '1.9';
-"""
+u"""
 IPTCInfo - Python module for extracting and modifying IPTC image meta-data
 
 Ported from Josh Carter's Perl IPTCInfo-1.9.pm by Tamás Gulácsi
@@ -237,7 +237,7 @@ Josh Carter, josh@multipart-mixed.com
 """
 
 __version__ = '1.9.2-rc7'
-__author__ = 'Gulácsi, Tamás'
+__author__ = u'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
 
@@ -350,6 +350,7 @@ c_datasets = {
 }
 
 c_datasets_r = dict([(v, k) for k, v in c_datasets.iteritems()])
+del k, v
 
 class IPTCData(dict):
   """Dict with int/string keys from c_listdatanames"""
@@ -549,7 +550,7 @@ class IPTCInfo(object):
     fh2.close()
     return True
 
-  def __destroy__(self):
+  def __del__(self):
     """Called when object is destroyed. No action necessary in this case."""
     pass
 
@@ -560,7 +561,7 @@ class IPTCInfo(object):
 
   def getData(self):
     return self._data
-  def setData(self, value):
+  def setData(self, _):
     raise Exception('You cannot overwrite the data, only its elements!')
   data = property(getData, setData)
 
@@ -615,55 +616,56 @@ class IPTCInfo(object):
     filename, and the XML will be dumped into there."""
 
     def P(s):
-      global off
+      #global off
       return '  '*off + s + '\n'
     off = 0
 
     if len(basetag) == 0: basetag = 'photo'
-    out = P("<%s>" % basetag)
+    out = [P("<%s>" % basetag)]
 
     off += 1
     # dump extra info first, if any
-    for k, v in (isinstance(extra, dict) and [extra] or [{}])[0].iteritems():
-      out += P("<%s>%s</%s>" % (k, v, k))
+    for k, v in (isinstance(extra, dict) 
+        and [extra] or [{}])[0].iteritems():
+      out.append( P("<%s>%s</%s>" % (k, v, k)) )
 
     # dump our stuff
     for k, v in self._data.iteritems():
       if not isinstance(v, list):
         key = re.sub('/', '-', re.sub(' +', ' ', self._data.keyAsStr(k)))
-        out += P("<%s>%s</%s>" % (key, v, key))
+        out.append( P("<%s>%s</%s>" % (key, v, key)) )
 
     # print keywords
     kw = self.keywords()
     if kw and len(kw) > 0:
-      out += P("<keywords>")
+      out.append( P("<keywords>") )
       off += 1
-      for k in kw: out += P("<keyword>%s</keyword>" % k)
+      for k in kw: out.append( P("<keyword>%s</keyword>" % k) )
       off -= 1
-      out += P("</keywords>")
+      out.append( P("</keywords>") )
 
     # print supplemental categories
     sc = self.supplementalCategories()
     if sc and len(sc) > 0:
-      out += P("<supplemental_categories>")
+      out.append( P("<supplemental_categories>") )
       off += 1
       for k in sc:
-        out += P("<supplemental_category>%s</supplemental_category>" % k)
+        out.append( P("<supplemental_category>%s</supplemental_category>" % k) )
       off -= 1
-      out += P("</supplemental_categories>")
+      out.append( P("</supplemental_categories>") )
 
     # print contacts
     kw = self.contacts()
     if kw and len(kw) > 0:
-      out += P("<contacts>")
+      out.append( P("<contacts>") )
       off += 1
-      for k in kw: out += P("<contact>%s</contact>" % k)
+      for k in kw: out.append( P("<contact>%s</contact>" % k) )
       off -= 1
-      out += P("</contacts>")
+      out.append( P("</contacts>") )
 
     # close base tag
     off -= 1
-    out += P("</%s>" % basetag)
+    out.append( P("</%s>" % basetag) )
 
     # export to file if caller asked for it.
     if len(filename) > 0:
@@ -671,7 +673,7 @@ class IPTCInfo(object):
       xmlout.write(out)
       xmlout.close()
 
-    return out
+    return ''.join(out)
 
   def exportSQL(self, tablename, mappings, extra):
     """statement = info.exportSQL('mytable', mappings, extra-data)
@@ -697,7 +699,7 @@ class IPTCInfo(object):
     # start with extra data, if any
     columns = ', '.join(extra.keys() + mappings.keys())
     values = ', '.join(map(E, extra.values()
-                           + [self.getData(k) for k in mappings.keys()]))
+                           + [self.data[k] for k in mappings.keys()]))
     # process our data
 
     statement = "INSERT INTO %s (%s) VALUES (%s)" \
@@ -942,7 +944,7 @@ class IPTCInfo(object):
       # and, if unsuccessful, into _data. Tags which are not in the
       # current IIM spec (version 4) are currently discarded.
       if self._data.has_key(dataset) and isinstance(self._data[dataset], list):
-        self._data[dataset] += [value]
+        self._data[dataset].append( value )
       elif dataset != 0:
         self._data[dataset] = value
 
@@ -959,7 +961,7 @@ class IPTCInfo(object):
     ## assert isinstance(fh, file)
     assert duck_typed(fh, ['seek', 'read'])
     adobeParts = ''
-    start = ''
+    start = []
 
     # Start at beginning of file
     fh.seek(0, 0)
@@ -971,7 +973,7 @@ class IPTCInfo(object):
       return None
 
     # Begin building start of file
-    start += pack("BB", 0xff, 0xd8)
+    start.append( pack("BB", 0xff, 0xd8) )
 
     # Get first marker in file. This will be APP0 for JFIF or APP1 for
     # EXIF.
@@ -985,23 +987,23 @@ class IPTCInfo(object):
 
     if ord(marker) == 0xe0 or not discardAppParts:
       # Always include APP0 marker at start if it's present.
-      start += pack('BB', 0xff, ord(marker))
+      start.append( pack('BB', 0xff, ord(marker)) )
       # Remember that the length must include itself (2 bytes)
-      start += pack('!H', len(app0data)+2)
-      start += app0data
+      start.append( pack('!H', len(app0data)+2) )
+      start.append( app0data )
     else:
       # Manually insert APP0 if we're trashing application parts, since
       # all JFIF format images should start with the version block.
       debug(2, 'discardAppParts=', discardAppParts)
-      start += pack("BB", 0xff, 0xe0)
-      start += pack("!H", 16)    # length (including these 2 bytes)
-      start += "JFIF"            # format
-      start += pack("BB", 1, 2)  # call it version 1.2 (current JFIF)
-      start += pack('8B', 0)     # zero everything else
+      start.append( pack("BB", 0xff, 0xe0) )
+      start.append( pack("!H", 16) )  # length (including these 2 bytes)
+      start.append( "JFIF" )          # format
+      start.append( pack("BB", 1, 2) )# call it version 1.2 (current JFIF)
+      start.append( pack('8B', 0) )   # zero everything else
 
     # Now scan through all markers in file until we hit image data or
     # IPTC stuff.
-    end = ''
+    end = []
     while 1:
       marker = self.jpegNextMarker(fh)
       if marker is None or ord(marker) == 0:
@@ -1011,12 +1013,12 @@ class IPTCInfo(object):
       # Check for end of image
       elif ord(marker) == 0xd9:
         self.log("JpegCollectFileParts: saw end of image marker")
-        end += pack("BB", 0xff, ord(marker))
+        end.append( pack("BB", 0xff, ord(marker)) )
         break
       # Check for start of compressed data
       elif ord(marker) == 0xda:
         self.log("JpegCollectFileParts: saw start of compressed data")
-        end += pack("BB", 0xff, ord(marker))
+        end.append( pack("BB", 0xff, ord(marker)) )
         break
       partdata = ''
       partdata = self.jpegSkipVariable(fh, partdata)
@@ -1037,17 +1039,17 @@ class IPTCInfo(object):
         break
       else:
         # Append all other parts to start section
-        start += pack("BB", 0xff, ord(marker))
-        start += pack("!H", len(partdata) + 2)
-        start += partdata
+        start.append( pack("BB", 0xff, ord(marker)) )
+        start.append( pack("!H", len(partdata) + 2) )
+        start.append( partdata )
 
     # Append rest of file to end
     while 1:
-      buff = fh.read()
+      buff = fh.read(8192)
       if buff is None or len(buff) == 0: break
-      end += buff
+      end.append(buff)
 
-    return (start, end, adobeParts)
+    return (''.join(start), ''.join(end), adobeParts)
 
   def collectAdobeParts(self, data):
     """Part APP13 contains yet another markup format, one defined by
@@ -1059,7 +1061,7 @@ class IPTCInfo(object):
     assert isinstance(data, basestring)
     length = len(data)
     offset = 0
-    out = ''
+    out = []
     # Skip preamble
     offset = len('Photoshop 3.0 ')
     # Process everything
@@ -1093,15 +1095,18 @@ class IPTCInfo(object):
 
       # skip IIM data (0x0404), but write everything else out
       if not (id1 == 4 and id2 == 4):
-        out += pack("!LBB", ostype, id1, id2)
-        out += pack("B", stringlen)
-        out += string
-        if stringlen == 0 or stringlen % 2 != 0: out += pack("B", 0)
-        out += pack("!L", size)
-        out += var
-        if size % 2 != 0 and len(out) % 2 != 0: out += pack("B", 0)
+        out.append( pack("!LBB", ostype, id1, id2) )
+        out.append( pack("B", stringlen) )
+        out.append( string )
+        if stringlen == 0 or stringlen % 2 != 0: 
+          out.append( pack("B", 0) )
+        out.append( pack("!L", size) )
+        out.append( var )
+        out = [''.join(out)]
+        if size % 2 != 0 and len(out[0]) % 2 != 0: 
+          out.append( pack("B", 0) )
 
-    return out
+    return ''.join(out)
 
   def _enc(self, text):
     """Recodes the given text from the old character set to utf-8"""
@@ -1123,11 +1128,11 @@ class IPTCInfo(object):
   def packedIIMData(self):
     """Assembles and returns our _data and _listdata into IIM format for
     embedding into an image."""
-    out = ''
+    out = []
     (tag, record) = (0x1c, 0x02)
     # Print record version
     # tag - record - dataset - len (short) - 4 (short)
-    out += pack("!BBBHH", tag, record, 0, 2, 4)
+    out.append( pack("!BBBHH", tag, record, 0, 2, 4) )
 
     debug(3, self.hexDump(out))
     # Iterate over data sets
@@ -1141,42 +1146,42 @@ class IPTCInfo(object):
       print value
       if not isinstance(value, list):
         value = str(value)
-        out += pack("!BBBH", tag, record, dataset, len(value))
-        out += value
+        out.append( pack("!BBBH", tag, record, dataset, len(value)) )
+        out.append( value )
       else:
         for v in map(str, value):
           if v is None or len(v) == 0: continue
-          out += pack("!BBBH", tag, record, dataset, len(v))
-          out += v
+          out.append( pack("!BBBH", tag, record, dataset, len(v)) )
+          out.append( v )
 
-    return out
+    return ''.join(out)
 
   def photoshopIIMBlock(self, otherparts, data):
     """Assembles the blob of Photoshop "resource data" that includes our
     fresh IIM data (from PackedIIMData) and the other Adobe parts we
     found in the file, if there were any."""
-    out = ''
+    out = []
     assert isinstance(data, basestring)
-    resourceBlock = "Photoshop 3.0"
-    resourceBlock += pack("B", 0)
+    resourceBlock = ["Photoshop 3.0"]
+    resourceBlock.append( pack("B", 0) )
     # Photoshop identifier
-    resourceBlock += "8BIM"
+    resourceBlock.append( "8BIM" )
     # 0x0404 is IIM data, 00 is required empty string
-    resourceBlock += pack("BBBB", 0x04, 0x04, 0, 0)
+    resourceBlock.append( pack("BBBB", 0x04, 0x04, 0, 0) )
     # length of data as 32-bit, network-byte order
-    resourceBlock += pack("!L", len(data))
+    resourceBlock.append( pack("!L", len(data)) )
     # Now tack data on there
-    resourceBlock += data
+    resourceBlock.append( data )
     # Pad with a blank if not even size
-    if len(data) % 2 != 0: resourceBlock += pack("B", 0)
+    if len(data) % 2 != 0: resourceBlock.append( pack("B", 0) )
     # Finally tack on other data
-    if otherparts is not None: resourceBlock += otherparts
+    if otherparts is not None: resourceBlock.append( otherparts )
 
-    out += pack("BB", 0xff, 0xed) # Jpeg start of block, APP13
-    out += pack("!H", len(resourceBlock) + 2) # length
-    out += resourceBlock
+    out.append( pack("BB", 0xff, 0xed) ) # Jpeg start of block, APP13
+    out.append( pack("!H", len(resourceBlock) + 2) ) # length
+    out.extend( resourceBlock )
 
-    return out
+    return ''.join(out)
 
   #######################################################################
   # Helpers, docs
@@ -1192,12 +1197,14 @@ class IPTCInfo(object):
     length  = len(dump)
     P = lambda z: ((ord(z) >= 0x21 and ord(z) <= 0x7e) and [z] or ['.'])[0]
     ROWLEN = 18
-    ered = '\n'
-    for j in range(0, length/ROWLEN + int(length%ROWLEN>0)):
+    ered = ['\n']
+    for j in range(0, length//ROWLEN + int(length%ROWLEN>0)):
       row = dump[j*ROWLEN:(j+1)*ROWLEN]
-      ered += ('%02X '*len(row) + '   '*(ROWLEN-len(row)) + '| %s\n') % \
-              tuple(map(ord, row) + [''.join(map(P, row))])
-    return ered
+      ered.append( 
+      ('%02X '*len(row) + '   '*(ROWLEN-len(row)) + '| %s\n') % \
+        tuple(map(ord, row) + [''.join(map(P, row))]) 
+        )
+    return ''.join(ered)
 
   def jpegDebugScan(self, filename):
     """Also very helpful when debugging."""
