@@ -114,6 +114,7 @@ Topic :: Utilities
 """
 
 from distutils.core import setup
+from distutils.command.sdist import sdist as _sdist
 import sys
 
 if sys.version_info < (2, 3):
@@ -123,11 +124,22 @@ if sys.version_info < (2, 3):
       del kwargs["classifiers"]
       _setup(**kwargs)
 
+class sdist(_sdist, object):
+  def run(self):
+    import os
+    res = _sdist.run(self)
+    print self.get_archive_files()
+    for fn in self.get_archive_files():
+      os.system('scp -p %s gtmainbox:/var/www/html/python/' % fn)
+    return res
+  
+
 doclines = __doc__.split("\n")
 
 version = '1.9.2-rc8'
 zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
-setup(name='IPTCInfo',
+setup(cmdclass={'sdist': sdist},
+      name='IPTCInfo',
       version=version,
       url='http://gthomas.homelinux.org/hg/iptcinfo/file/',
       download_url='http://gthomas.homelinux.org/python/IPTCInfo-%s.%s' % (version, zipext),
