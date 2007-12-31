@@ -4,7 +4,7 @@
 
 u"""IPTCInfo: extract and modify IPTC (metadata) information on images - port of IPTCInfo.pm by Josh Carter <josh@multipart-mixed.com>'
 
-Ported from Josh Carter's Perl IPTCInfo-1.9.pm by Tamás Gulácsi
+Ported from Josh Carter's Perl IPTCInfo-1.9.pm by Tamas Gulacsi
 
 Ever wish you add information to your photos like a caption, the place
 you took it, the date, and perhaps even keywords and categories? You
@@ -19,6 +19,10 @@ IPTCInfo will let your web server -- and other automated server
 programs -- pull it back out. You can use the information directly in
 Python programs, export it to XML, or even export SQL statements ready
 to be fed into a database.
+
+1.9.2-rc8:
+  charset recognition loosened (failed with some image out of 
+  Adobe Lightroom).
 
 1.9.2-rc7: NOT READY
   IPTCInfo now accepts 'inp_charset' keyword for setting input charset.
@@ -121,15 +125,15 @@ if sys.version_info < (2, 3):
 
 doclines = __doc__.split("\n")
 
-version = '1.9.2-rc7'
+version = '1.9.2-rc8'
 zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
 setup(name='IPTCInfo',
       version=version,
       url='http://gthomas.homelinux.org/hg/iptcinfo/file/',
       download_url='http://gthomas.homelinux.org/python/IPTCInfo-%s.%s' % (version, zipext),
-      author=u'Tamás Gulácsi',
+      author=u'Tamas Gulacsi',
       author_email='gthomas@fw.hu',
-      maintainer=u'Tamás Gulácsi',
+      maintainer=u'Tamas Gulacsi',
       maintainer_email='gthomas@fw.hu',
       license = 'http://www.opensource.org/licenses/gpl-license.php',
       platforms = ['any'],

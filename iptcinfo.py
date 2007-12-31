@@ -236,14 +236,14 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '1.9.2-rc7'
+__version__ = '1.9.2-rc8'
 __author__ = u'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
 
 from struct import pack, unpack
 from cStringIO import StringIO
-import sys, re, codecs, os
+import sys, re, codecs, os, tempfile, shutil
 
 class String(basestring):
   def __iadd__(self, other):
@@ -506,48 +506,51 @@ class IPTCInfo(object):
     debug(3, 'adobe2', adobe)
 
     debug(1, 'writing...')
-    # fh = os.tmpfile() ## 20051011 - Windows doesn't like tmpfile ##
-    # Open dest file and stuff data there
-    # fh.truncate()
-    # fh.seek(0, 0)
-    # debug(2, self._filepos(fh))
-    fh = StringIO()
+    (tmpfh, tmpfn) = tempfile.mkstemp()
+    fh = os.fdopen(tmpfh, 'wb')
+    #fh = StringIO()
     if not fh:
       self.log("Can't open output file")
       return None
     debug(3, len(start), len(end))
     fh.write(start)
     # character set
-    ch = self.c_charset_r.get((self.out_charset is None and [self.inp_charset]
-                               or [self.out_charset])[0], None)
-    # writing the character set is not the best practice - couldn't find the needed place (record) for it yet!
+    ch = self.c_charset_r.get(
+        (self.out_charset is None and [self.inp_charset]
+         or [self.out_charset])[0], None)
+    # writing the character set is not the best practice 
+    # - couldn't find the needed place (record) for it yet!
     if SURELY_WRITE_CHARSET_INFO and ch is not None:
       fh.write(pack("!BBBHH", 0x1c, 1, 90, 4, ch))
 
-
     debug(2, self._filepos(fh))
-    #$self->PhotoshopIIMBlock($adobe, $self->PackedIIMData());
     data = self.photoshopIIMBlock(adobe, self.packedIIMData())
     debug(3, len(data), self.hexDump(data))
     fh.write(data)
     debug(2, self._filepos(fh))
-    fh.flush()
     fh.write(end)
     debug(2, self._filepos(fh))
     fh.flush()
 
+    #print fh, tmpfn, newfile
     #copy the successfully written file back to the given file
-    fh2 = file(newfile, 'wb')
-    fh2.truncate()
-    fh2.seek(0,0)
-    fh.seek(0, 0)
-    while 1:
-      buf = fh.read(8192)
-      if buf is None or len(buf) == 0: break
-      fh2.write(buf)
-    self._closefh(fh)
-    fh2.flush()
-    fh2.close()
+    if hasattr(fh, 'getvalue'): #StringIO
+      fh2 = file(newfile, 'wb')
+      fh2.truncate()
+      fh2.seek(0,0)
+      fh.seek(0, 0)
+      while 1:
+        buf = fh.read(8192)
+        if buf is None or len(buf) == 0: break
+        fh2.write(buf)
+      self._closefh(fh)
+      fh2.flush()
+      fh2.close()
+    else:
+      if os.path.exists(newfile):
+        shutil.move(newfile, newfile + '~')
+      fh.close()
+      shutil.move(tmpfn, newfile)
     return True
 
   def __del__(self):
@@ -720,7 +723,7 @@ class IPTCInfo(object):
       self.log("File is Jpeg, proceeding with JpegScan")
       return self.jpegScan(fh)
     else:
-      self.log("File not a JPEG, trying BlindScan")
+      self.log("File not a JPEG, trying blindScan")
       return self.blindScan(fh)
 
   def fileIsJpeg(self, fh): #OK#
@@ -787,7 +790,7 @@ class IPTCInfo(object):
         return None
 
     # If were's here, we must have found the right marker. Now
-    # BlindScan through the data.
+    # blindScan through the data.
     return self.blindScan(fh, MAX=self.jpegGetVariableLength(fh))
 
   def jpegNextMarker(self, fh): #OK#
@@ -890,8 +893,12 @@ class IPTCInfo(object):
           # found character set's record!
           try:
             temp = self.readExactly(fh, self.jpegGetVariableLength(fh))
-            self.inp_charset = self.c_charset.get(unpack('!H', temp)[0],
-                                                  sys_enc)
+            try:
+              cs = unpack('!H', temp)[0]
+            except:
+              print 'WARNING: problems with charset recognition', repr(temp)
+              cs = sys_enc
+            self.inp_charset = self.c_charset.get(cs, sys_enc)
             self.log("BlindScan: found character set '%s' at offset %d"
                      % (self.inp_charset, offset))
           except EOFException:
@@ -1176,10 +1183,11 @@ class IPTCInfo(object):
     if len(data) % 2 != 0: resourceBlock.append( pack("B", 0) )
     # Finally tack on other data
     if otherparts is not None: resourceBlock.append( otherparts )
+    resourceBlock = ''.join(resourceBlock)
 
     out.append( pack("BB", 0xff, 0xed) ) # Jpeg start of block, APP13
     out.append( pack("!H", len(resourceBlock) + 2) ) # length
-    out.extend( resourceBlock )
+    out.append( resourceBlock )
 
     return ''.join(out)
 
@@ -1198,11 +1206,12 @@ class IPTCInfo(object):
     P = lambda z: ((ord(z) >= 0x21 and ord(z) <= 0x7e) and [z] or ['.'])[0]
     ROWLEN = 18
     ered = ['\n']
-    for j in range(0, length//ROWLEN + int(length%ROWLEN>0)):
+    for j in xrange(length//ROWLEN + int(length%ROWLEN>0)):
       row = dump[j*ROWLEN:(j+1)*ROWLEN]
+      if isinstance(row, list): row = ''.join(row)
       ered.append( 
       ('%02X '*len(row) + '   '*(ROWLEN-len(row)) + '| %s\n') % \
-        tuple(map(ord, row) + [''.join(map(P, row))]) 
+        tuple(map(ord, list(row)) + [''.join(map(P, row))]) 
         )
     return ''.join(ered)
 
