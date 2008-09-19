@@ -1,7 +1,12 @@
-(^|/)\.bzr($|/)
-(^|/)\.hg($|/)
-(^|/)\.hgtags($|/)
-^iptcinfo.log$
-^iptcinfo.state$
-^iptcinfo.state.old$
-^iptcinfo.state.journal$
+syntax: glob
+.bzr/*
+.hg/*
+dist/*
+build/*
+*.pyc
+*.kpf
+*.jpg
+iptcinfo.state
+iptcinfo.*.*
+*.log
+MANIFEST

@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim: mode=python fenc=utf-8 fileformat=unix:
-# Author: 2004-2006 Gulácsi Tamás
+# Author: 2004-2008 Gulácsi Tamás
 #
-# Ported from Josh Carter's Perl IPTCInfo.pm by Tam?s Gul?csi
+# Ported from Josh Carter's Perl IPTCInfo.pm by Tamás Gulácsi
 #
 # IPTCInfo: extractor for IPTC metadata embedded in images
 # Copyright (C) 2000-2004 Josh Carter <josh@multipart-mixed.com>
+# Copyright (C) 2004-2008 Tamás Gulácsi <gthomas@gthomas.hu>
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
