@@ -3,7 +3,7 @@ syntax: glob
 .hg/*
 dist/*
 build/*
-*.pyc
+*.py[oc]
 *.kpf
 *.jpg
 iptcinfo.state

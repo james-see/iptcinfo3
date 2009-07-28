@@ -137,12 +137,14 @@ class sdist(_sdist, object):
 doclines = __doc__.split("\n")
 
 version = '1.9.2-rc8'
-zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
-setup(cmdclass={'sdist': sdist},
+#zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
+setup(#cmdclass={'sdist': sdist},
       name='IPTCInfo',
       version=version,
-      url='http://gthomas.homelinux.org/hg/iptcinfo/file/',
-      download_url='http://gthomas.homelinux.org/python/IPTCInfo-%s.%s' % (version, zipext),
+      url='http://bitbucket.org/gthomas/iptcinfo/',
+      download_url='http://gthomas.homelinux.org/hg/hgwebdir.cgi/repos/iptcinfo/archive/tip.tar.bz2',
+      #url='http://freehg.org/u/gthomas/iptcinfo/',
+      #download_url='http://fo-%s.%s' % (version, zipext),
       author=u'Tamas Gulacsi',
       author_email='gthomas@fw.hu',
       maintainer=u'Tamas Gulacsi',
