@@ -238,7 +238,7 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '1.9.2-rc8'
+__version__ = '1.9.5-1'
 __author__ = u'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
@@ -580,8 +580,8 @@ class IPTCInfo(object):
 
     def __str__(self):
         return ('charset: ' + self.inp_charset + '\n'
-                        + str(dict([(self._data.keyAsStr(k), v)
-                                              for k, v in self._data.iteritems()])))
+                + str(dict([(self._data.keyAsStr(k), v)
+                           for k, v in self._data.iteritems()])))
 
 
     def readExactly(self, fh, length):
@@ -866,9 +866,9 @@ class IPTCInfo(object):
         return (rSave is not None and [temp] or [True])[0]
 
     c_charset = {100: 'iso8859_1', 101: 'iso8859_2', 109: 'iso8859_3',
-                              110: 'iso8859_4', 111: 'iso8859_5', 125: 'iso8859_7',
-                              127: 'iso8859_6', 138: 'iso8859_8',
-                              196: 'utf_8'}
+                  110: 'iso8859_4', 111: 'iso8859_5', 125: 'iso8859_7',
+                  127: 'iso8859_6', 138: 'iso8859_8',
+                  196: 'utf_8'}
     c_charset_r = dict([(v, k) for k, v in c_charset.iteritems()])
     def blindScan(self, fh, MAX=8192): #OK#
         """Scans blindly to first IIM Record 2 tag in the file. This
@@ -903,8 +903,9 @@ class IPTCInfo(object):
                             cs = unpack('!H', temp)[0]
                         except:
                             print 'WARNING: problems with charset recognition', repr(temp)
-                            cs = sys_enc
-                        self.inp_charset = self.c_charset.get(cs, sys_enc)
+                            cs = None
+                        if cs in self.c_charset:
+                            self.inp_charset = self.c_charset[cs]
                         self.log("BlindScan: found character set '%s' at offset %d"
                                           % (self.inp_charset, offset))
                     except EOFException:
@@ -1125,15 +1126,15 @@ class IPTCInfo(object):
         """Recodes the given text from the old character set to utf-8"""
         res = text
         out_charset = (self.out_charset is None and [self.inp_charset]
-                                      or [self.out_charset])[0]
+                       or [self.out_charset])[0]
         if isinstance(text, unicode): res = text.encode(out_charset)
         elif isinstance(text, str):
             try: res = unicode(text, encoding=self.inp_charset).encode(out_charset)
             except:
                 self.log("_enc: charset %s is not working for %s"
-                                  % (self.inp_charset, text))
-                res = unicode(text, encoding=self.inp_charset, errors='replace'
-                                            ).encode(out_charset)
+                         % (self.inp_charset, text))
+            res = unicode(text, encoding=self.inp_charset, errors='replace'
+                          ).encode(out_charset)
         elif isinstance(text, (list, tuple)):
             res = type(text)(map(self._enc, text))
         return res

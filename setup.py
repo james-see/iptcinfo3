@@ -138,7 +138,9 @@ class sdist(_sdist, object):
 
 doclines = __doc__.split("\n")
 
-version = '1.9.2-rc8'
+version = (row.split('=', 1)[-1].strip().strip("'").strip('"')
+    for row in open('iptcinfo.py', 'rU') if row.startswith('__version__')).next()
+#~ version = '1.9.2-rc8'
 #zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
 setup(#cmdclass={'sdist': sdist},
     name='IPTCInfo',
