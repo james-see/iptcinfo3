@@ -10,3 +10,4 @@ iptcinfo.state
 iptcinfo.*.*
 *.log
 MANIFEST
+*~
