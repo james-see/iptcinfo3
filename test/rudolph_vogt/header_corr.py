@@ -58,3 +58,10 @@ def checkrefid(filename,fileobj,ncounter):
 
 if '__main__' == __name__:
     checkrefid('test.jpg', sys.stdout, 100)
+
+
+##
+## -IPTC:objectpreviewfileformat=0
+
+
+##

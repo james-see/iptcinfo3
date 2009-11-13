@@ -358,12 +358,12 @@ class IPTCData(dict):
     """Dict with int/string keys from c_listdatanames"""
     def __init__(self, diction={}, *args, **kwds):
         super(type(self), self).__init__(self, *args, **kwds)
-        self.update(dict([(self.keyAsInt(k), v)
-                                            for k, v in diction.iteritems()]))
+        self.update(dict((self.keyAsInt(k), v)
+                         for k, v in diction.iteritems()))
 
     c_cust_pre = 'nonstandard_'
     def keyAsInt(self, key):
-        global c_datasets_r
+        #~ global c_datasets_r
         if isinstance(key, int): return key #and c_datasets.has_key(key): return key
         elif c_datasets_r.has_key(key): return c_datasets_r[key]
         elif (key.startswith(self.c_cust_pre)
@@ -372,7 +372,6 @@ class IPTCData(dict):
         else: raise KeyError("Key %s is not in %s!" % (key, c_datasets_r.keys()))
 
     def keyAsStr(self, key):
-        global c_datasets
         if isinstance(key, basestring) and c_datasets_r.has_key(key): return key
         elif c_datasets.has_key(key): return c_datasets[key]
         elif isinstance(key, int): return self.c_cust_pre + str(key)
