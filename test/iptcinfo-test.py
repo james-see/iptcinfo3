@@ -5,13 +5,16 @@
 
 import sys
 sys.path.insert(0, '.')
-from iptcinfo import IPTCInfo
+from iptcinfo import IPTCInfo, LOG, LOGDBG
 
 if __name__ == '__main__':
-  if len(sys.argv) > 1:
-    info = IPTCInfo(sys.argv[1],True)
-    info.keywords = [u'test']
-    info.supplementalCategories = []
-    info.contacts = []
-    print >>sys.stderr,"info = %s\n%s" % (info,"="*30)
-    info.save()
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    LOGDBG.setLevel(logging.DEBUG)
+    if len(sys.argv) > 1:
+        info = IPTCInfo(sys.argv[1],True)
+        info.keywords = [u'test']
+        info.supplementalCategories = []
+        info.contacts = []
+        print >>sys.stderr,"info = %s\n%s" % (info,"="*30)
+        info.save()

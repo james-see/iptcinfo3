@@ -238,7 +238,7 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '1.9.5-2'
+__version__ = '1.9.5-3'
 __author__ = u'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
@@ -246,6 +246,10 @@ SURELY_WRITE_CHARSET_INFO = False
 from struct import pack, unpack
 #~ from cStringIO import StringIO
 import sys, re, os, tempfile, shutil
+
+import logging
+LOG = logging.getLogger('iptcinfo')
+LOGDBG = logging.getLogger('iptcinfo.debug')
 
 class String(basestring):
     def __iadd__(self, other):
@@ -389,10 +393,6 @@ class IPTCData(dict):
             else: raise ValueError("For %s only lists acceptable!" % name)
         else: o.__setitem__(self.keyAsInt(name), value)
 
-def debug(level, *args):
-    if level < debugMode:
-        print '\n'.join(map(unicode, args))
-
 def _getSetSomeList(name):
     def getList(self):
         """Returns the list of %s.""" % name
@@ -451,7 +451,7 @@ class IPTCInfo(object):
             # Do the real snarfing here
             if datafound: self.collectIIMInfo(fh)
         else:
-            self.log("No IPTC data found.")
+            LOG.info("No IPTC data found.")
             self._closefh(fh)
             raise Exception("No IPTC data found.")
         self._closefh(fh)
@@ -464,7 +464,7 @@ class IPTCInfo(object):
         if self._filename is not None:
             fh = file(self._filename, (mode + 'b').replace('bb', 'b'))
             if not fh:
-                self.log("Can't open file")
+                LOG.error("Can't open file (%r)", self._filename)
                 return None
             else: return fh
         else: 
@@ -489,7 +489,8 @@ class IPTCInfo(object):
 
     def _filepos(self, fh):
         fh.flush()
-        return 'POS=%d\n' % fh.tell()
+        #~ return 'POS=%d\n' % fh.tell()
+        return fh.tell()
 
     def saveAs(self, newfile, options=None):
         """Saves Jpeg with IPTC data to a given file name."""
@@ -498,32 +499,32 @@ class IPTCInfo(object):
         fh = self._getfh()
         fh.seek(0, 0)
         if not self.fileIsJpeg(fh):
-            self.log("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
+            LOG.error("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
             return None
         ret = self.jpegCollectFileParts(fh, options)
         self._closefh(fh)
         if ret is None:
-            self.log("collectfileparts failed")
+            LOG.error("collectfileparts failed")
             raise Exception('collectfileparts failed')
 
         (start, end, adobe) = ret
-        debug(2, 'start: %d, end: %d, adobe:%d' % tuple(map(len, ret)))
+        LOGDBG.debug('start: %d, end: %d, adobe:%d', *map(len, ret))
         self.hexDump(start), len(end)
-        debug(3, 'adobe1', adobe)
+        LOGDBG.debug('adobe1: %r', adobe)
         if options is not None and options.has_key('discardAdobeParts'):
             adobe = None
-        debug(3, 'adobe2', adobe)
+        LOGDBG.debug('adobe2: %r', adobe)
 
-        debug(1, 'writing...')
+        LOGDBG.info('writing...')
         (tmpfd, tmpfn) = tempfile.mkstemp()
         os.close(tmpfd)
         #~ fh = os.fdopen(tmpfh, 'wb')
         tmpfh = open(tmpfn, 'wb')
         #fh = StringIO()
         if not tmpfh:
-            self.log("Can't open output file")
+            LOG.error("Can't open output file %r", tmpfn)
             return None
-        debug(3, len(start), len(end))
+        LOGDBG.debug('start=%d end=%d', len(start), len(end))
         tmpfh.write(start)
         # character set
         ch = self.c_charset_r.get(self.out_charset, None)
@@ -532,13 +533,13 @@ class IPTCInfo(object):
         if SURELY_WRITE_CHARSET_INFO and ch is not None:
             tmpfh.write(pack("!BBBHH", 0x1c, 1, 90, 4, ch))
 
-        debug(2, self._filepos(tmpfh))
+        LOGDBG.debug('pos: %d', self._filepos(tmpfh))
         data = self.photoshopIIMBlock(adobe, self.packedIIMData())
-        debug(3, len(data), self.hexDump(data))
+        LOGDBG.debug('data len=%d dmp=%r', len(data), self.hexDump(data))
         tmpfh.write(data)
-        debug(2, self._filepos(tmpfh))
+        LOGDBG.debug('pos: %d', self._filepos(tmpfh))
         tmpfh.write(end)
-        debug(2, self._filepos(tmpfh))
+        LOGDBG.debug('pos: %d', self._filepos(tmpfh))
         tmpfh.flush()
         tmpfh.close()
 
@@ -731,10 +732,10 @@ class IPTCInfo(object):
         types."""
         ## assert isinstance(fh, file)
         if self.fileIsJpeg(fh):
-            self.log("File is Jpeg, proceeding with JpegScan")
+            LOG.info("File is Jpeg, proceeding with JpegScan")
             return self.jpegScan(fh)
         else:
-            self.log("File not a JPEG, trying blindScan")
+            LOG.warn("File not a JPEG, trying blindScan")
             return self.blindScan(fh)
 
     def fileIsJpeg(self, fh): #OK#
@@ -746,9 +747,8 @@ class IPTCInfo(object):
         assert duck_typed(fh, ['read', 'seek'])
         fh.seek(0, 0)
         if debugMode > 0:
-            self.log("Opening 16 bytes of file:\n");
-            dump = fh.read(16)
-            debug(3, self.hexDump(dump))
+            LOG.info("Opening 16 bytes of file: %r", 
+                self.hexDump(fh.read(16)))
             fh.seek(0, 0)
         # check start of file marker
         ered = False
@@ -784,7 +784,7 @@ class IPTCInfo(object):
 
         if not (ord(ff) == 0xff and ord(soi) == 0xd8):
             self.error = "JpegScan: invalid start of file"
-            self.log(self.error)
+            LOG.error(self.error)
             return None
         # Scan for the APP13 marker which will contain our IPTC info (I hope).
         while 1:
@@ -797,7 +797,7 @@ class IPTCInfo(object):
                 err = "JpegSkipVariable failed"
             if err is not None:
                 self.error = err
-                self.log(err)
+                LOG.error(err)
                 return None
 
         # If were's here, we must have found the right marker. Now
@@ -814,9 +814,11 @@ class IPTCInfo(object):
         except EOFException: return None
 
         while ord(byte) != 0xff:
-            self.log("JpegNextMarker: warning: bogus stuff in Jpeg file");
-            try: byte = self.readExactly(fh, 1)
-            except EOFException: return None
+            LOG.warn("JpegNextMarker: warning: bogus stuff in Jpeg file");
+            try: 
+                byte = self.readExactly(fh, 1)
+            except EOFException: 
+                return None
         # Now skip any extra 0xffs, which are valid padding.
         while 1:
             try: byte = self.readExactly(fh, 1)
@@ -824,7 +826,7 @@ class IPTCInfo(object):
             if ord(byte) != 0xff: break
 
         # byte should now contain the marker id.
-        self.log("JpegNextMarker: at marker %02X (%d)" % (ord(byte), ord(byte)))
+        LOG.debug("JpegNextMarker: at marker %02X (%d)", ord(byte), ord(byte))
         return byte
 
     def jpegGetVariableLength(self, fh): #OK#
@@ -833,13 +835,15 @@ class IPTCInfo(object):
         to JPEGNextMarker. File position is updated to just past the
         length field."""
         ## assert isinstance(fh, file)
-        try: length = unpack('!H', self.readExactly(fh, 2))[0]
-        except EOFException: return 0
-        self.log('JPEG variable length: %d' % length)
+        try: 
+            length = unpack('!H', self.readExactly(fh, 2))[0]
+        except EOFException: 
+            return 0
+        LOG.debug('JPEG variable length: %d', length)
 
         # Length includes itself, so must be at least 2
         if length < 2:
-            self.log("JPEGGetVariableLength: erroneous JPEG marker length")
+            LOG.warn("JPEGGetVariableLength: erroneous JPEG marker length")
             return 0
         return length-2
 
@@ -855,17 +859,19 @@ class IPTCInfo(object):
 
         # Skip remaining bytes
         if rSave is not None or debugMode > 0:
-            try: temp = self.readExactly(fh, length)
+            try: 
+                temp = self.readExactly(fh, length)
             except EOFException:
-                self.log("JpegSkipVariable: read failed while skipping var data");
+                LOG.error("JpegSkipVariable: read failed while skipping var data");
                 return None
         # prints out a heck of a lot of stuff
         # self.hexDump(temp)
         else:
             # Just seek
-            try: self.seekExactly(fh, length)
+            try: 
+                self.seekExactly(fh, length)
             except EOFException:
-                self.log("JpegSkipVariable: read failed while skipping var data");
+                LOG.error("JpegSkipVariable: read failed while skipping var data");
                 return None
 
         return (rSave is not None and [temp] or [True])[0]
@@ -887,13 +893,14 @@ class IPTCInfo(object):
         offset = 0
         # keep within first 8192 bytes
         # NOTE: this may need to change
-        self.log('blindScan: starting scan, max length %d' % MAX)
+        LOG.debug('blindScan: starting scan, max length %d', MAX)
 
         # start digging
         while offset <= MAX:
-            try: temp = self.readExactly(fh, 1)
+            try: 
+                temp = self.readExactly(fh, 1)
             except EOFException:
-                self.log("BlindScan: hit EOF while scanning");
+                LOG.error("BlindScan: hit EOF while scanning");
                 return None
             # look for tag identifier 0x1c
             if ord(temp) == 0x1c:
@@ -911,23 +918,26 @@ class IPTCInfo(object):
                             cs = None
                         if cs in self.c_charset:
                             self.inp_charset = self.c_charset[cs]
-                        self.log("BlindScan: found character set '%s' at offset %d"
-                                          % (self.inp_charset, offset))
+                        LOG.info("BlindScan: found character set '%s' at offset %d",
+                            self.inp_charset, offset)
                     except EOFException:
                         pass
 
                 elif ord(record) == 2:
                     # found it. seek to start of this tag and return.
-                    self.log("BlindScan: found IIM start at offset %d" % offset);
-                    try: self.seekExactly(fh, -3) # seek rel to current position
+                    LOG.debug("BlindScan: found IIM start at offset %d", offset)
+                    try: 
+                        self.seekExactly(fh, -3) # seek rel to current position
                     except EOFException:
                         return None
                     return offset
                 else:
                     # didn't find it. back up 2 to make up for
                     # those reads above.
-                    try: self.seekExactly(fh, -2) # seek rel to current position
-                    except EOFException: return None
+                    try: 
+                        self.seekExactly(fh, -2) # seek rel to current position
+                    except EOFException: 
+                        return None
 
             # no tag, keep scanning
             offset += 1
@@ -942,23 +952,27 @@ class IPTCInfo(object):
         ## assert isinstance(fh, file)
         assert duck_typed(fh, 'read')
         while 1:
-            try: header = self.readExactly(fh, 5)
-            except EOFException: return None
+            try: 
+                header = self.readExactly(fh, 5)
+            except EOFException: 
+                return None
 
             (tag, record, dataset, length) = unpack("!BBBH", header)
             # bail if we're past end of IIM record 2 data
-            if not (tag == 0x1c and record == 2): return None
+            if not (tag == 0x1c and record == 2): 
+                return None
 
             alist = {'tag': tag, 'record': record, 'dataset': dataset,
                      'length': length}
-            debug(1, '\n'.join(['%s\t: %s' % (k, v) for k, v in alist.iteritems()]))
+            LOG.debug('\n'.join('%s\t: %s' % (k, v) 
+                for k, v in alist.iteritems()))
             value = fh.read(length)
 
             if self.inp_charset:
                 try: 
                     value = unicode(value, encoding=self.inp_charset, errors='strict')
                 except:
-                    self.log('Data "%s" is not in encoding %s!' % (value, self.inp_charset))
+                    LOG.error('Data "%r" is not in encoding %s!', value, self.inp_charset)
                     value = unicode(value, encoding=self.inp_charset, errors='replace')
 
             # try to extract first into _listdata (keywords, categories)
@@ -990,7 +1004,7 @@ class IPTCInfo(object):
         (ff, soi) = fh.read(2)
         if not (ord(ff) == 0xff and ord(soi) == 0xd8):
             self.error = "JpegScan: invalid start of file"
-            self.log(self.error)
+            LOG.error(self.error)
             return None
 
         # Begin building start of file
@@ -1003,7 +1017,7 @@ class IPTCInfo(object):
         app0data = self.jpegSkipVariable(fh, app0data)
         if app0data is None:
             self.error = 'jpegSkipVariable failed'
-            self.log(self.error)
+            LOG.error(self.error)
             return None
 
         if ord(marker) == 0xe0 or not discardAppParts:
@@ -1015,7 +1029,7 @@ class IPTCInfo(object):
         else:
             # Manually insert APP0 if we're trashing application parts, since
             # all JFIF format images should start with the version block.
-            debug(2, 'discardAppParts=', discardAppParts)
+            LOGDBG.debug('discardAppParts=%r', discardAppParts)
             start.append( pack("BB", 0xff, 0xe0) )
             start.append( pack("!H", 16) )  # length (including these 2 bytes)
             start.append( "JFIF" )          # format
@@ -1029,23 +1043,23 @@ class IPTCInfo(object):
             marker = self.jpegNextMarker(fh)
             if marker is None or ord(marker) == 0:
                 self.error = "Marker scan failed"
-                self.log(self.error)
+                LOG.error(self.error)
                 return None
             # Check for end of image
             elif ord(marker) == 0xd9:
-                self.log("JpegCollectFileParts: saw end of image marker")
+                LOG.debug("JpegCollectFileParts: saw end of image marker")
                 end.append( pack("BB", 0xff, ord(marker)) )
                 break
             # Check for start of compressed data
             elif ord(marker) == 0xda:
-                self.log("JpegCollectFileParts: saw start of compressed data")
+                LOG.debug("JpegCollectFileParts: saw start of compressed data")
                 end.append( pack("BB", 0xff, ord(marker)) )
                 break
             partdata = ''
             partdata = self.jpegSkipVariable(fh, partdata)
             if not partdata:
                 self.error = "JpegSkipVariable failed"
-                self.log(self.error)
+                LOG.error(self.error)
                 return None
             partdata = str(partdata)
 
@@ -1140,8 +1154,8 @@ class IPTCInfo(object):
                 res = unicode(text, encoding=self.inp_charset
                     ).encode(out_charset)
             except (UnicodeEncodeError, UnicodeDecodeError):
-                self.log("_enc: charset %s is not working for %s"
-                         % (self.inp_charset, text))
+                LOG.error("_enc: charset %s is not working for %s", 
+                    self.inp_charset, text)
                 res = unicode(text, encoding=self.inp_charset, errors='replace'
                               ).encode(out_charset)
         elif isinstance(text, (list, tuple)):
@@ -1157,15 +1171,16 @@ class IPTCInfo(object):
         # tag - record - dataset - len (short) - 4 (short)
         out.append( pack("!BBBHH", tag, record, 0, 2, 4) )
 
-        debug(3, self.hexDump(out))
+        LOGDBG.debug('out=%r', self.hexDump(out))
         # Iterate over data sets
         for dataset, value in self._data.iteritems():
-            if len(value) == 0: continue
-            if not (c_datasets.has_key(dataset) or isinstance(dataset, int)):
-                self.log("PackedIIMData: illegal dataname '%s' (%d)"
-                                  % (c_datasets[dataset], dataset))
+            if len(value) == 0: 
                 continue
-            self.log('packedIIMData %r -> %r' % (value, self._enc(value)))
+            if not (c_datasets.has_key(dataset) or isinstance(dataset, int)):
+                LOG.error("PackedIIMData: illegal dataname '%s' (%d)", 
+                    c_datasets[dataset], dataset)
+                continue
+            LOG.debug('packedIIMData %r -> %r', value, self._enc(value))
             value = self._enc(value)
             if not isinstance(value, list):
                 value = str(value)
@@ -1211,36 +1226,33 @@ class IPTCInfo(object):
     # Helpers, docs
     #######################################################################
 
-    def log(self, string):
-        """log: just prints a message to STDERR if debugMode is on."""
-        if debugMode > 0:
-            sys.stderr.write("**IPTC** %s\n" % string)
-
-    def hexDump(self, dump):
+    @staticmethod
+    def hexDump(dump):
         """Very helpful when debugging."""
         length  = len(dump)
         P = lambda z: ((ord(z) >= 0x21 and ord(z) <= 0x7e) and [z] or ['.'])[0]
         ROWLEN = 18
-        ered = ['\n']
+        res = ['\n']
         for j in xrange(length//ROWLEN + int(length%ROWLEN>0)):
             row = dump[j*ROWLEN:(j+1)*ROWLEN]
             if isinstance(row, list): row = ''.join(row)
-            ered.append(
+            res.append(
             ('%02X '*len(row) + '   '*(ROWLEN-len(row)) + '| %s\n') % \
                 tuple(map(ord, list(row)) + [''.join(map(P, row))])
                 )
-        return ''.join(ered)
+        return ''.join(res)
 
     def jpegDebugScan(self, filename):
         """Also very helpful when debugging."""
         assert isinstance(filename, basestring) and os.path.isfile(filename)
         fh = file(filename, 'wb')
-        if not fh: raise Exception("Can't open %s" % filename)
+        if not fh: 
+            raise Exception("Can't open %s" % filename)
 
         # Skip past start of file marker
         (ff, soi) = fh.read(2)
         if not (ord(ff) == 0xff and ord(soi) == 0xd8):
-            self.log("JpegScan: invalid start of file")
+            LOG.error("JpegScan: invalid start of file")
         else:
             # scan to 0xDA (start of scan), dumping the markers we see between
             # here and there.
@@ -1249,19 +1261,20 @@ class IPTCInfo(object):
                 if ord(marker) == 0xda: break
 
                 if ord(marker) == 0:
-                    self.log("Marker scan failed")
+                    LOG.error("Marker scan failed")
                     break
                 elif ord(marker) == 0xd9:
-                    self.log("Marker scan hit end of image marker")
+                    LOG.debug("Marker scan hit end of image marker")
                     break
 
                 if not self.jpegSkipVariable(fh):
-                    self.log("JpegSkipVariable failed")
+                    LOG.error("JpegSkipVariable failed")
                     return None
 
         self._closefh(fh)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     if len(sys.argv) > 1:
         info = IPTCInfo(sys.argv[1])
         print info
