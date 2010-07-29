@@ -400,11 +400,13 @@ def _getSetSomeList(name):
 
     def setList(self, value):
         """Sets the list of %s.""" % name
-        if isinstance(value, (list, tuple)): self._data[name] = list(value)
+        if isinstance(value, (list, tuple)): 
+            self._data[name] = list(value)
         elif isinstance(value, basestring):
             self._data[name] = [value]
             print 'Warning: IPTCInfo.%s is a list!' % name
-        else: raise ValueError('IPTCInfo.%s is a list!' % name)
+        else: 
+            raise ValueError('IPTCInfo.%s is a list!' % name)
 
     return (getList, setList)
 
@@ -421,14 +423,19 @@ class IPTCInfo(object):
 
     If force==True, than forces an object to always be returned. This
     allows you to start adding stuff to files that don't have IPTC info
-    and then save it."""
+    and then save it.
+    
+    If inp_charset is None, then no translation is done to unicode (except 
+    when charset is encoded in the image metadata). In this case you should
+    be VERY careful to use bytestrings overall with the SAME ENCODING!
+    """
 
-    def __init__(self, fobj, force=False, inp_charset=sys_enc,
-                              *args, **kwds):
+    def __init__(self, fobj, force=False, inp_charset=None, out_charset=None,
+                 *args, **kwds):
         # Open file and snarf data from it.
         self._error = None
         self._data = IPTCData({'supplemental category': [], 'keywords': [],
-                                                      'contact': []})
+                               'contact': []})
         if duck_typed(fobj, 'read'):
             self._filename = None
             self._fh = fobj
@@ -437,7 +444,7 @@ class IPTCInfo(object):
 
         fh = self._getfh()
         self.inp_charset = inp_charset
-        self.out_charset = 'utf_8'
+        self.out_charset = out_charset or inp_charset
 
         datafound = self.scanToFirstIMMTag(fh)
         if datafound or force:
@@ -460,7 +467,8 @@ class IPTCInfo(object):
                 self.log("Can't open file")
                 return None
             else: return fh
-        else: return self._fh
+        else: 
+            return self._fh
 
     #######################################################################
     # New, Save, Destroy, Error
@@ -518,9 +526,7 @@ class IPTCInfo(object):
         debug(3, len(start), len(end))
         tmpfh.write(start)
         # character set
-        ch = self.c_charset_r.get(
-                (self.out_charset is None and [self.inp_charset]
-                  or [self.out_charset])[0], None)
+        ch = self.c_charset_r.get(self.out_charset, None)
         # writing the character set is not the best practice
         # - couldn't find the needed place (record) for it yet!
         if SURELY_WRITE_CHARSET_INFO and ch is not None:
@@ -578,9 +584,9 @@ class IPTCInfo(object):
     contacts = property(*_getSetSomeList('contact'))
 
     def __str__(self):
-        return ('charset: ' + self.inp_charset + '\n'
-                + str(dict([(self._data.keyAsStr(k), v)
-                           for k, v in self._data.iteritems()])))
+        return ('charset: %s\n%s' % (self.inp_charset,
+                str(dict((self._data.keyAsStr(k), v)
+                         for k, v in self._data.iteritems()))))
 
 
     def readExactly(self, fh, length):
@@ -944,14 +950,16 @@ class IPTCInfo(object):
             if not (tag == 0x1c and record == 2): return None
 
             alist = {'tag': tag, 'record': record, 'dataset': dataset,
-                              'length': length}
+                     'length': length}
             debug(1, '\n'.join(['%s\t: %s' % (k, v) for k, v in alist.iteritems()]))
             value = fh.read(length)
 
-            try: value = unicode(value, encoding=self.inp_charset, errors='strict')
-            except:
-                self.log('Data "%s" is not in encoding %s!' % (value, self.inp_charset))
-                value = unicode(value, encoding=self.inp_charset, errors='replace')
+            if self.inp_charset:
+                try: 
+                    value = unicode(value, encoding=self.inp_charset, errors='strict')
+                except:
+                    self.log('Data "%s" is not in encoding %s!' % (value, self.inp_charset))
+                    value = unicode(value, encoding=self.inp_charset, errors='replace')
 
             # try to extract first into _listdata (keywords, categories)
             # and, if unsuccessful, into _data. Tags which are not in the
@@ -1124,10 +1132,10 @@ class IPTCInfo(object):
     def _enc(self, text):
         """Recodes the given text from the old character set to utf-8"""
         res = text
-        out_charset = (self.out_charset is None and [self.inp_charset]
-                       or [self.out_charset])[0]
-        if isinstance(text, unicode): res = text.encode(out_charset)
-        elif isinstance(text, str):
+        out_charset = self.out_charset or self.inp_charset
+        if isinstance(text, unicode): 
+            res = text.encode(out_charset or 'utf8')
+        elif isinstance(text, str) and out_charset:
             try: 
                 res = unicode(text, encoding=self.inp_charset
                     ).encode(out_charset)
