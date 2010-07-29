@@ -21,6 +21,11 @@ Python programs, export it to XML, or even export SQL statements ready
 to be fed into a database.
 
 1.9.5-2: Emil Steström pinpointed some bugs/misleading (un)comments
+    Also a new (mis)feature is implemented: if you don't specify inp_charset
+    (and the image misses such information, too) than no conversion is made
+    to unicode, everything stays bytestring!
+    This way you don't need to deal with charsets, BUT it is your risk to make
+    the modifications with the SAME charset as it is in the image!
 
 1.9.5-1: getting in sync with the Perl version 1.9.5
 
