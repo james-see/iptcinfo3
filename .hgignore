@@ -11,3 +11,4 @@ iptcinfo.*.*
 *.log
 MANIFEST
 *~
+test/rudolph_vogt

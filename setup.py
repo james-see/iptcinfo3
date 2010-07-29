@@ -20,6 +20,10 @@ programs -- pull it back out. You can use the information directly in
 Python programs, export it to XML, or even export SQL statements ready
 to be fed into a database.
 
+1.9.5-2: Emil Steström pinpointed some bugs/misleading (un)comments
+
+1.9.5-1: getting in sync with the Perl version 1.9.5
+
 1.9.2-rc8:
     charset recognition loosened (failed with some image out of
     Adobe Lightroom).
@@ -146,7 +150,7 @@ setup(#cmdclass={'sdist': sdist},
     name='IPTCInfo',
     version=version,
     url='http://bitbucket.org/gthomas/iptcinfo/',
-    download_url='http://gthomas.homelinux.org/hg/hgwebdir.cgi/repos/iptcinfo/archive/tip.tar.bz2',
+    download_url='http://bitbucket.org/gthomas/iptcinfo/get/tip.tar.bz2',
     #url='http://freehg.org/u/gthomas/iptcinfo/',
     #download_url='http://fo-%s.%s' % (version, zipext),
     author=u'Tamas Gulacsi',

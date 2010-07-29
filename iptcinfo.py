@@ -238,14 +238,14 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '1.9.5-1'
+__version__ = '1.9.5-2'
 __author__ = u'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
 
 from struct import pack, unpack
-from cStringIO import StringIO
-import sys, re, codecs, os, tempfile, shutil
+#~ from cStringIO import StringIO
+import sys, re, os, tempfile, shutil
 
 class String(basestring):
     def __iadd__(self, other):
@@ -1128,12 +1128,14 @@ class IPTCInfo(object):
                        or [self.out_charset])[0]
         if isinstance(text, unicode): res = text.encode(out_charset)
         elif isinstance(text, str):
-            try: res = unicode(text, encoding=self.inp_charset).encode(out_charset)
-            except:
+            try: 
+                res = unicode(text, encoding=self.inp_charset
+                    ).encode(out_charset)
+            except (UnicodeEncodeError, UnicodeDecodeError):
                 self.log("_enc: charset %s is not working for %s"
                          % (self.inp_charset, text))
-            res = unicode(text, encoding=self.inp_charset, errors='replace'
-                          ).encode(out_charset)
+                res = unicode(text, encoding=self.inp_charset, errors='replace'
+                              ).encode(out_charset)
         elif isinstance(text, (list, tuple)):
             res = type(text)(map(self._enc, text))
         return res
@@ -1155,8 +1157,8 @@ class IPTCInfo(object):
                 self.log("PackedIIMData: illegal dataname '%s' (%d)"
                                   % (c_datasets[dataset], dataset))
                 continue
+            self.log('packedIIMData %r -> %r' % (value, self._enc(value)))
             value = self._enc(value)
-            print value
             if not isinstance(value, list):
                 value = str(value)
                 out.append( pack("!BBBH", tag, record, dataset, len(value)) )
