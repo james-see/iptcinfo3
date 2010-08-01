@@ -22,7 +22,7 @@ to be fed into a database.
 
 1.9.5-3: use logging module.
 
-1.9.5-2: Emil Steström pinpointed some bugs/misleading (un)comments
+1.9.5-2: Emil Stenström pinpointed some bugs/misleading (un)comments
     Also a new (mis)feature is implemented: if you don't specify inp_charset
     (and the image misses such information, too) than no conversion is made
     to unicode, everything stays bytestring!
