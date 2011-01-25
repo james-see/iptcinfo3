@@ -494,9 +494,9 @@ class IPTCInfo(object):
 
     def saveAs(self, newfile, options=None):
         """Saves Jpeg with IPTC data to a given file name."""
-        assert self._filename is not None
         # Open file and snarf data from it.
         fh = self._getfh()
+        assert fh
         fh.seek(0, 0)
         if not self.fileIsJpeg(fh):
             LOG.error("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
