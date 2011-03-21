@@ -373,48 +373,50 @@ del k, v
 class IPTCData(dict):
     """Dict with int/string keys from c_listdatanames"""
     def __init__(self, diction={}, *args, **kwds):
-        super(type(self), self).__init__(self, *args, **kwds)
+        dict.__init__(self, *args, **kwds)
         self.update(dict((self.keyAsInt(k), v)
                          for k, v in diction.iteritems()))
 
     c_cust_pre = 'nonstandard_'
 
-    def keyAsInt(self, key):
+    @classmethod
+    def keyAsInt(cls, key):
         #~ global c_datasets_r
         if isinstance(key, int):
             return key
         elif key in c_datasets_r:
             return c_datasets_r[key]
-        elif (key.startswith(self.c_cust_pre)
-                    and key[len(self.c_cust_pre):].isdigit()):
-            return int(key[len(self.c_cust_pre):])
+        elif (key.startswith(cls.c_cust_pre)
+                    and key[len(cls.c_cust_pre):].isdigit()):
+            return int(key[len(cls.c_cust_pre):])
         else:
             raise KeyError("Key %s is not in %s!" % (key, c_datasets_r.keys()))
 
-    def keyAsStr(self, key):
+    @classmethod
+    def keyAsStr(cls, key):
         if isinstance(key, basestring) and key in c_datasets_r:
             return key
         elif key in c_datasets:
             return c_datasets[key]
         elif isinstance(key, int):
-            return self.c_cust_pre + str(key)
+            return cls.c_cust_pre + str(key)
         else:
             raise KeyError("Key %s is not in %s!" % (key, c_datasets.keys()))
 
     def __getitem__(self, name):
-        return super(type(self), self).get(self.keyAsInt(name), None)
+        return dict.get(self, self.keyAsInt(name), None)
 
     def __setitem__(self, name, value):
         key = self.keyAsInt(name)
-        o = super(type(self), self)
-        if key in o and isinstance(o.__getitem__(key), list):
+        if key in self and isinstance(dict.__getitem__(self, key),
+                (tuple, list)):
             #print key, c_datasets[key], o.__getitem__(key)
-            if isinstance(value, list):
-                o.__setitem__(key, value)
+            if isinstance(value, (tuple, list)):
+                dict.__setitem__(self, key, value)
             else:
                 raise ValueError("For %s only lists acceptable!" % name)
         else:
-            o.__setitem__(self.keyAsInt(name), value)
+            dict.__setitem__(self, self.keyAsInt(name), value)
 
 
 def _getSetSomeList(name):
