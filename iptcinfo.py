@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# vim: mode=python fenc=utf-8 fileformat=unix:
+# vim: fenc=utf-8 fileformat=unix:
 # Author: 2004-2008 Gulácsi Tamás
 #
 # Ported from Josh Carter's Perl IPTCInfo.pm by Tamás Gulácsi
@@ -238,7 +238,7 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '1.9.5-5'
+__version__ = '1.9.5-6'
 __author__ = u'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
