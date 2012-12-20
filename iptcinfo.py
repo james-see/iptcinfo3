@@ -238,7 +238,7 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '1.9.5-6'
+__version__ = '1.9.5-7'
 __author__ = u'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
@@ -478,9 +478,9 @@ class IPTCInfo(object):
             if datafound:
                 self.collectIIMInfo(fh)
         else:
-            LOG.info("No IPTC data found.")
+            LOG.warn("No IPTC data found.")
             self._closefh(fh)
-            raise Exception("No IPTC data found.")
+            # raise Exception("No IPTC data found.")
         self._closefh(fh)
 
     def _closefh(self, fh):
@@ -957,7 +957,7 @@ class IPTCInfo(object):
             try:
                 temp = self.readExactly(fh, 1)
             except EOFException:
-                LOG.error("BlindScan: hit EOF while scanning")
+                LOG.warn("BlindScan: hit EOF while scanning")
                 return None
             # look for tag identifier 0x1c
             if ord(temp) == 0x1c:
@@ -1034,7 +1034,7 @@ class IPTCInfo(object):
                     value = unicode(value, encoding=self.inp_charset,
                         errors='strict')
                 except:
-                    LOG.error('Data "%r" is not in encoding %s!',
+                    LOG.warn('Data "%r" is not in encoding %s!',
                         value, self.inp_charset)
                     value = unicode(value, encoding=self.inp_charset,
                         errors='replace')
@@ -1252,7 +1252,7 @@ class IPTCInfo(object):
             if len(value) == 0:
                 continue
             if not dataset in (c_datasets or isinstance(dataset, int)):
-                LOG.error("PackedIIMData: illegal dataname '%s' (%d)",
+                LOG.warn("PackedIIMData: illegal dataname '%s' (%d)",
                     c_datasets[dataset], dataset)
                 continue
             LOG.debug('packedIIMData %r -> %r', value, self._enc(value))
@@ -1340,14 +1340,14 @@ class IPTCInfo(object):
                     break
 
                 if ord(marker) == 0:
-                    LOG.error("Marker scan failed")
+                    LOG.warn("Marker scan failed")
                     break
                 elif ord(marker) == 0xd9:
                     LOG.debug("Marker scan hit end of image marker")
                     break
 
                 if not self.jpegSkipVariable(fh):
-                    LOG.error("JpegSkipVariable failed")
+                    LOG.warn("JpegSkipVariable failed")
                     return None
 
         self._closefh(fh)

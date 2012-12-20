@@ -16,6 +16,8 @@ programs -- pull it back out. You can use the information directly in
 Python programs, export it to XML, or even export SQL statements ready
 to be fed into a database.
 
+1.9.5-7: https://bitbucket.org/gthomas/iptcinfo/issue/3/images-w-o-iptc-data-should-not-log-errors - have silencable parse errors.
+
 1.9.5-6: to have a nice new upload (seems easy_install grabs an old version).
 
 1.9.5-5: fix some issues with "super"
