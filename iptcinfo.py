@@ -845,7 +845,7 @@ class IPTCInfo(object):
                 err = "JpegSkipVariable failed"
             if err is not None:
                 self.error = err
-                LOG.error(err)
+                LOG.warn(err)
                 return None
 
         # If were's here, we must have found the right marker. Now
