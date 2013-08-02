@@ -238,7 +238,7 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '1.9.5-7'
+__version__ = '1.9.5-8'
 __author__ = u'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
@@ -548,10 +548,11 @@ class IPTCInfo(object):
 
         LOGDBG.info('writing...')
         (tmpfd, tmpfn) = tempfile.mkstemp()
-        os.close(tmpfd)
-        #~ fh = os.fdopen(tmpfh, 'wb')
-        tmpfh = open(tmpfn, 'wb')
-        #fh = StringIO()
+        if self._filename and os.path.exists(self._filename):
+            shutil.copystat(self._filename, tmpfn)
+        #os.close(tmpfd)
+        tmpfh = os.fdopen(tmpfd, 'wb')
+        #tmpfh = open(tmpfn, 'wb')
         if not tmpfh:
             LOG.error("Can't open output file %r", tmpfn)
             return None
@@ -572,7 +573,6 @@ class IPTCInfo(object):
         tmpfh.write(end)
         LOGDBG.debug('pos: %d', self._filepos(tmpfh))
         tmpfh.flush()
-        tmpfh.close()
 
         #print tmpfh, tmpfn, newfile
         #copy the successfully written file back to the given file
@@ -580,18 +580,13 @@ class IPTCInfo(object):
             fh2 = open(newfile, 'wb')
             fh2.truncate()
             fh2.seek(0, 0)
-            tmpfh = open(tmpfn, 'rb')
-            #~ fh.seek(0, 0)
-            while 1:
-                buf = tmpfh.read(8192)
-                if not buf:
-                    break
-                fh2.write(buf)
+            fh2.write(tmpfh.getvalue())
             fh2.flush()
             fh2.close()
             tmpfh.close()
             os.unlink(tmpfn)
         else:
+            tmpfh.close()
             if os.path.exists(newfile):
                 shutil.move(newfile, newfile + '~')
             shutil.move(tmpfn, newfile)
@@ -1253,7 +1248,7 @@ class IPTCInfo(object):
                 continue
             if not dataset in (c_datasets or isinstance(dataset, int)):
                 LOG.warn("PackedIIMData: illegal dataname '%s' (%d)",
-                    c_datasets[dataset], dataset)
+                    dataset, dataset)
                 continue
             LOG.debug('packedIIMData %r -> %r', value, self._enc(value))
             value = self._enc(value)

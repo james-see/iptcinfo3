@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # :mode=python:encoding=UTF-8:
 from iptcinfo import IPTCInfo
+import logging
+logging.basicConfig(level=logging.DEBUG)
 import sys
 
 fn = (len(sys.argv) > 1 and [sys.argv[1]] or ['test.jpg'])[0]
