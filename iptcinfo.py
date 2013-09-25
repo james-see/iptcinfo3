@@ -430,7 +430,7 @@ def _getSetSomeList(name):
             self._data[name] = list(value)
         elif isinstance(value, basestring):
             self._data[name] = [value]
-            print 'Warning: IPTCInfo.%s is a list!' % name
+            LOG.warn('Warning: IPTCInfo.%s is a list!', name)
         else:
             raise ValueError('IPTCInfo.%s is a list!' % name)
 
@@ -967,9 +967,8 @@ class IPTCInfo(object):
                         try:
                             cs = unpack('!H', temp)[0]
                         except:
-                            print (
-                                'WARNING: problems with charset recognition',
-                                repr(temp))
+                            LOG.warn('WARNING: problems with charset '
+                                    'recognition (%r)', temp)
                             cs = None
                         if cs in self.c_charset:
                             self.inp_charset = self.c_charset[cs]
