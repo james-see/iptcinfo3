@@ -1245,7 +1245,7 @@ class IPTCInfo(object):
         for dataset, value in self._data.iteritems():
             if len(value) == 0:
                 continue
-            if not dataset in (c_datasets or isinstance(dataset, int)):
+            if not (isinstance(dataset, int) and dataset in c_datasets):
                 LOG.warn("PackedIIMData: illegal dataname '%s' (%d)",
                     dataset, dataset)
                 continue
