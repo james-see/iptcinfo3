@@ -32,7 +32,7 @@ info.data['supplemental category'] = ['portrait']
 info.data[123] = '123'
 info.data['nonstandard_123'] = 'n123'
 
-print info.data
+print((info.data))
 
 # Save new info to file
 ##### See disclaimer in 'SAVING FILES' section #####
@@ -40,5 +40,5 @@ info.save()
 info.saveAs(fn2)
 
 #re-read IPTC info
-print IPTCInfo(fn2)
+print((IPTCInfo(fn2)))
 

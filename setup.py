@@ -29,7 +29,7 @@ class sdist(_sdist, object):
     def run(self):
         import os
         res = _sdist.run(self)
-        print self.get_archive_files()
+        print((self.get_archive_files()))
         for fn in self.get_archive_files():
             os.system('scp -p %s gtmainbox:/var/www/html/python/' % fn)
         return res
@@ -39,9 +39,9 @@ def openfile(fname):
     import os
     return open(os.path.join(os.path.dirname(__file__), fname))
 
-version = (row.split('=', 1)[-1].strip().strip("'").strip('"')
+version = next((row.split('=', 1)[-1].strip().strip("'").strip('"')
     for row in open('iptcinfo.py', 'rU')
-    if row.startswith('__version__')).next()
+    if row.startswith('__version__')))
 #~ version = '1.9.2-rc8'
 #zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
 setup(  # cmdclass={'sdist': sdist},
@@ -50,14 +50,14 @@ setup(  # cmdclass={'sdist': sdist},
     url='http://bitbucket.org/gthomas/iptcinfo/downloads',
     download_url='http://bitbucket.org/gthomas/iptcinfo/get/'
         'iptcinfo-%s.tar.bz2' % version,
-    author=u'Tamas Gulacsi',
+    author='Tamas Gulacsi',
     author_email='gthomas@fw.hu',
-    maintainer=u'Tamas Gulacsi',
+    maintainer='Tamas Gulacsi',
     maintainer_email='gthomas@fw.hu',
     long_description=openfile('README').read(),
     license='http://www.opensource.org/licenses/gpl-license.php',
     platforms=['any'],
     description=openfile('README').readline(),
-    classifiers=filter(None, classifiers.split('\n')),
+    classifiers=[_f for _f in classifiers.split('\n') if _f],
     py_modules=['iptcinfo'],
     )

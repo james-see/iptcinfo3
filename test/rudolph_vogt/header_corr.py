@@ -19,7 +19,7 @@ def checkrefid(filename,fileobj,ncounter):
     info = iptcinfo.IPTCInfo(filename,force=True)
 
     if len(info.data) > 3:
-        if info.data['reference number'] >= 0 or info.data['reference number'] <> None:
+        if info.data['reference number'] >= 0 or info.data['reference number'] != None:
             ldigit = info.data['reference number'].isdigit()
             if ldigit:
                 nDisplay = 1
@@ -38,7 +38,7 @@ def checkrefid(filename,fileobj,ncounter):
             info.data['reference number'] = [0]
             info.save()
 
-    print "number.... ",ncounter , filename
+    print("number.... ",ncounter , filename)
 
     if nDisplay == 2 or nDisplay == 3:
         try:

@@ -14,7 +14,7 @@
 # it under the same terms as Python itself.
 #
 # VERSION = '1.9';
-u"""
+"""
 IPTCInfo - Python module for extracting and modifying IPTC image meta-data
 
 Ported from Josh Carter's Perl IPTCInfo-1.9.pm by Tamás Gulácsi
@@ -239,7 +239,7 @@ Josh Carter, josh@multipart-mixed.com
 """
 
 __version__ = '1.9.5-8'
-__author__ = u'Gulácsi, Tamás'
+__author__ = 'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
 
@@ -256,7 +256,7 @@ LOG = logging.getLogger('iptcinfo')
 LOGDBG = logging.getLogger('iptcinfo.debug')
 
 
-class String(basestring):
+class String(str):
     def __iadd__(self, other):
         assert isinstance(other, str)
         super(type(self), self).__iadd__(other)
@@ -279,7 +279,7 @@ def push(diction, key, value):
 
 
 def duck_typed(obj, prefs):
-    if isinstance(prefs, basestring):
+    if isinstance(prefs, str):
         prefs = [prefs]
     for pref in prefs:
         if not hasattr(obj, pref):
@@ -366,7 +366,7 @@ c_datasets = {
     219: 'custom20',
 }
 
-c_datasets_r = dict([(v, k) for k, v in c_datasets.iteritems()])
+c_datasets_r = dict([(v, k) for k, v in list(c_datasets.items())])
 del k, v
 
 
@@ -375,7 +375,7 @@ class IPTCData(dict):
     def __init__(self, diction={}, *args, **kwds):
         dict.__init__(self, *args, **kwds)
         self.update(dict((self.keyAsInt(k), v)
-                         for k, v in diction.iteritems()))
+                         for k, v in list(diction.items())))
 
     c_cust_pre = 'nonstandard_'
 
@@ -390,18 +390,18 @@ class IPTCData(dict):
                     and key[len(cls.c_cust_pre):].isdigit()):
             return int(key[len(cls.c_cust_pre):])
         else:
-            raise KeyError("Key %s is not in %s!" % (key, c_datasets_r.keys()))
+            raise KeyError("Key %s is not in %s!" % (key, list(c_datasets_r.keys())))
 
     @classmethod
     def keyAsStr(cls, key):
-        if isinstance(key, basestring) and key in c_datasets_r:
+        if isinstance(key, str) and key in c_datasets_r:
             return key
         elif key in c_datasets:
             return c_datasets[key]
         elif isinstance(key, int):
             return cls.c_cust_pre + str(key)
         else:
-            raise KeyError("Key %s is not in %s!" % (key, c_datasets.keys()))
+            raise KeyError("Key %s is not in %s!" % (key, list(c_datasets.keys())))
 
     def __getitem__(self, name):
         return dict.get(self, self.keyAsInt(name), None)
@@ -428,7 +428,7 @@ def _getSetSomeList(name):
         """Sets the list of %s.""" % name
         if isinstance(value, (list, tuple)):
             self._data[name] = list(value)
-        elif isinstance(value, basestring):
+        elif isinstance(value, str):
             self._data[name] = [value]
             LOG.warn('Warning: IPTCInfo.%s is a list!', name)
         else:
@@ -539,7 +539,7 @@ class IPTCInfo(object):
             raise Exception('collectfileparts failed')
 
         (start, end, adobe) = ret
-        LOGDBG.debug('start: %d, end: %d, adobe:%d', *map(len, ret))
+        LOGDBG.debug('start: %d, end: %d, adobe:%d', *list(map(len, ret)))
         self.hexDump(start), len(end)
         LOGDBG.debug('adobe1: %r', adobe)
         if options is not None and 'discardAdobeParts' in options:
@@ -616,7 +616,7 @@ class IPTCInfo(object):
     def __str__(self):
         return ('charset: %s\n%s' % (self.inp_charset,
                 str(dict((self._data.keyAsStr(k), v)
-                         for k, v in self._data.iteritems()))))
+                         for k, v in list(self._data.items())))))
 
     def readExactly(self, fh, length):
         """readExactly
@@ -671,12 +671,12 @@ class IPTCInfo(object):
 
         off += 1
         # dump extra info first, if any
-        for k, v in (isinstance(extra, dict)
-                and [extra] or [{}])[0].iteritems():
+        for k, v in list((isinstance(extra, dict)
+                and [extra] or [{}])[0].items()):
             out.append(P("<%s>%s</%s>" % (k, v, k)))
 
         # dump our stuff
-        for k, v in self._data.iteritems():
+        for k, v in list(self._data.items()):
             if not isinstance(v, list):
                 key = re.sub('/', '-',
                     re.sub(' +', ' ', self._data.keyAsStr(k)))
@@ -748,9 +748,9 @@ class IPTCInfo(object):
         E = lambda s: "'%s'" % re.sub("'", "''", s)  # escape single quotes
 
         # start with extra data, if any
-        columns = ', '.join(extra.keys() + mappings.keys())
-        values = ', '.join(map(E, extra.values()
-            + [self.data[k] for k in mappings.keys()]))
+        columns = ', '.join(list(extra.keys()) + list(mappings.keys()))
+        values = ', '.join(map(E, list(extra.values())
+            + [self.data[k] for k in list(mappings.keys())]))
         # process our data
 
         statement = "INSERT INTO %s (%s) VALUES (%s)" \
@@ -931,7 +931,7 @@ class IPTCInfo(object):
                   110: 'iso8859_4', 111: 'iso8859_5', 125: 'iso8859_7',
                   127: 'iso8859_6', 138: 'iso8859_8',
                   196: 'utf_8'}
-    c_charset_r = dict([(v, k) for k, v in c_charset.iteritems()])
+    c_charset_r = dict([(v, k) for k, v in list(c_charset.items())])
 
     def blindScan(self, fh, MAX=8192):  # OK
         """Scans blindly to first IIM Record 2 tag in the file. This
@@ -1020,17 +1020,17 @@ class IPTCInfo(object):
             alist = {'tag': tag, 'record': record, 'dataset': dataset,
                      'length': length}
             LOG.debug('\n'.join('%s\t: %s' % (k, v)
-                for k, v in alist.iteritems()))
+                for k, v in list(alist.items())))
             value = fh.read(length)
 
             if self.inp_charset:
                 try:
-                    value = unicode(value, encoding=self.inp_charset,
+                    value = str(value, encoding=self.inp_charset,
                         errors='strict')
                 except:
                     LOG.warn('Data "%r" is not in encoding %s!',
                         value, self.inp_charset)
-                    value = unicode(value, encoding=self.inp_charset,
+                    value = str(value, encoding=self.inp_charset,
                         errors='replace')
 
             # try to extract first into _listdata (keywords, categories)
@@ -1155,7 +1155,7 @@ class IPTCInfo(object):
         everything but the IPTC data so that way we can write the file back
         without losing everything else Photoshop stuffed into the APP13
         block."""
-        assert isinstance(data, basestring)
+        assert isinstance(data, str)
         length = len(data)
         offset = 0
         out = []
@@ -1216,19 +1216,19 @@ class IPTCInfo(object):
         """Recodes the given text from the old character set to utf-8"""
         res = text
         out_charset = self.out_charset or self.inp_charset
-        if isinstance(text, unicode):
+        if isinstance(text, str):
             res = text.encode(out_charset or 'utf8')
         elif isinstance(text, str) and out_charset:
             try:
-                res = unicode(text, encoding=self.inp_charset).encode(
+                res = str(text, encoding=self.inp_charset).encode(
                     out_charset)
             except (UnicodeEncodeError, UnicodeDecodeError):
                 LOG.error("_enc: charset %s is not working for %s",
                     self.inp_charset, text)
-                res = unicode(text, encoding=self.inp_charset,
+                res = str(text, encoding=self.inp_charset,
                     errors='replace').encode(out_charset)
         elif isinstance(text, (list, tuple)):
-            res = type(text)(map(self._enc, text))
+            res = type(text)(list(map(self._enc, text)))
         return res
 
     def packedIIMData(self):
@@ -1242,7 +1242,7 @@ class IPTCInfo(object):
 
         LOGDBG.debug('out=%r', self.hexDump(out))
         # Iterate over data sets
-        for dataset, value in self._data.iteritems():
+        for dataset, value in list(self._data.items()):
             if len(value) == 0:
                 continue
             if not (isinstance(dataset, int) and dataset in c_datasets):
@@ -1269,7 +1269,7 @@ class IPTCInfo(object):
         fresh IIM data (from PackedIIMData) and the other Adobe parts we
         found in the file, if there were any."""
         out = []
-        assert isinstance(data, basestring)
+        assert isinstance(data, str)
         resourceBlock = ["Photoshop 3.0"]
         resourceBlock.append(pack("B", 0))
         # Photoshop identifier
@@ -1305,18 +1305,18 @@ class IPTCInfo(object):
         P = lambda z: ((ord(z) >= 0x21 and ord(z) <= 0x7e) and [z] or ['.'])[0]
         ROWLEN = 18
         res = ['\n']
-        for j in xrange(length // ROWLEN + int(length % ROWLEN > 0)):
+        for j in range(length // ROWLEN + int(length % ROWLEN > 0)):
             row = dump[j * ROWLEN:(j + 1) * ROWLEN]
             if isinstance(row, list):
                 row = ''.join(row)
             res.append(
             ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') % \
-                tuple(map(ord, list(row)) + [''.join(map(P, row))]))
+                tuple(list(map(ord, list(row))) + [''.join(map(P, row))]))
         return ''.join(res)
 
     def jpegDebugScan(self, filename):
         """Also very helpful when debugging."""
-        assert isinstance(filename, basestring) and os.path.isfile(filename)
+        assert isinstance(filename, str) and os.path.isfile(filename)
         fh = file(filename, 'wb')
         if not fh:
             raise Exception("Can't open %s" % filename)
@@ -1350,4 +1350,4 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     if len(sys.argv) > 1:
         info = IPTCInfo(sys.argv[1])
-        print info
+        print(info)

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-# :mode=python:encoding=ISO-8859-2:
+# :mode=python:encoding=utf-8
 # -*- coding: utf-8 -*-
-# Author: 2004 Gulácsi Tamás
 
 import sys
 sys.path.insert(0, '.')
@@ -13,8 +12,8 @@ if __name__ == '__main__':
     LOGDBG.setLevel(logging.DEBUG)
     if len(sys.argv) > 1:
         info = IPTCInfo(sys.argv[1],True)
-        info.keywords = [u'test']
+        info.keywords = ['test']
         info.supplementalCategories = []
         info.contacts = []
-        print >>sys.stderr,"info = %s\n%s" % (info,"="*30)
+        print("info = %s\n%s" % (info,"="*30), file=sys.stderr)
         info.save()
