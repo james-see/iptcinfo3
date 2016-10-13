@@ -45,19 +45,18 @@ version = next((row.split('=', 1)[-1].strip().strip("'").strip('"')
 #~ version = '1.9.2-rc8'
 #zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
 setup(  # cmdclass={'sdist': sdist},
-    name='IPTCInfo',
+    name='IPTCInfo3',
     version=version,
-    url='http://bitbucket.org/gthomas/iptcinfo/downloads',
-    download_url='http://bitbucket.org/gthomas/iptcinfo/get/'
-        'iptcinfo-%s.tar.bz2' % version,
+    url='https://github.com/jamesacampbell/iptcinfo3',
+    download_url='https://github.com/jamesacampbell/iptcinfo3',
     author='Tamas Gulacsi',
     author_email='gthomas@fw.hu',
-    maintainer='Tamas Gulacsi',
-    maintainer_email='gthomas@fw.hu',
-    long_description=openfile('README').read(),
+    maintainer='James Campbell',
+    maintainer_email='james@jamescampbell.us',
+    long_description=openfile('README.md').read(),
     license='http://www.opensource.org/licenses/gpl-license.php',
     platforms=['any'],
-    description=openfile('README').readline(),
+    description=openfile('README.md').readline(),
     classifiers=[_f for _f in classifiers.split('\n') if _f],
-    py_modules=['iptcinfo'],
+    py_modules=['iptcinfo3'],
     )
