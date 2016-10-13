@@ -366,8 +366,8 @@ c_datasets = {
     219: 'custom20',
 }
 
-c_datasets_r = dict([(v, k) for k, v in list(c_datasets.items())])
-del k, v
+c_datasets_r = dict([(v, k) for k, v in c_datasets.items()])
+# del k, v
 
 
 class IPTCData(dict):
@@ -490,7 +490,7 @@ class IPTCInfo(object):
     def _getfh(self, mode='r'):
         assert self._filename is not None or self._fh is not None
         if self._filename is not None:
-            fh = file(self._filename, (mode + 'b').replace('bb', 'b'))
+            fh = open(self._filename, (mode + 'b').replace('bb', 'b'))
             if not fh:
                 LOG.error("Can't open file (%r)", self._filename)
                 return None
@@ -959,7 +959,7 @@ class IPTCInfo(object):
                 # if we found that, look for record 2, dataset 0
                 # (record version number)
                 (record, dataset) = fh.read(2)
-                if ord(record) == 1 and ord(dataset) == 90:
+                if record == 1 and dataset == 90:
                     # found character set's record!
                     try:
                         temp = self.readExactly(fh,
@@ -977,7 +977,7 @@ class IPTCInfo(object):
                     except EOFException:
                         pass
 
-                elif ord(record) == 2:
+                elif record == 2:
                     # found it. seek to start of this tag and return.
                     LOG.debug("BlindScan: found IIM start at offset %d",
                         offset)
