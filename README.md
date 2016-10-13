@@ -1,3 +1,6 @@
+# IPTCINFO 3
+### Like IPTCInfo but finally compatible for Python 3
+
 IPTCInfo: extract and modify IPTC (metadata) information on images - port of IPTCInfo.pm by Josh Carter <josh@multipart-mixed.com>'
 
 Ported from Josh Carter's Perl IPTCInfo-1.9.pm by Tamas Gulacsi
