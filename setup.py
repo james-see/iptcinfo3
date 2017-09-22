@@ -40,7 +40,7 @@ def openfile(fname):
     return open(os.path.join(os.path.dirname(__file__), fname))
 
 version = next((row.split('=', 1)[-1].strip().strip("'").strip('"')
-    for row in open('iptcinfo.py', 'rU')
+    for row in open('iptcinfo3.py', 'rU')
     if row.startswith('__version__')))
 #~ version = '1.9.2-rc8'
 #zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
