@@ -594,6 +594,53 @@ class IPTCInfo(object):
             shutil.move(tmpfn, newfile)
         return True
 
+    def saveToBuf(self, buf, options=None):
+        """
+        Usage:
+        import iptcinfo3
+        from io import BytesIO
+
+        iptc = iptcinfo3.IPTCInfo(src_jpeg)
+        # change iptc data here..
+
+        # Save JPEG with new IPTC to the buf:
+        buf = BytesIO()
+        iptc.saveToBuf(buf)
+
+        # Save JPEG with new IPTC to a file:
+        with open("/tmp/file.jpg", "wb") as f:
+            iptc.saveToBuf(f)
+        """
+
+        fh = self._getfh()
+        fh.seek(0, 0)
+        if not self.fileIsJpeg(fh):
+            self._closefh(fh)
+            raise ValueError('Source file is not a valid JPEG')
+
+        ret = self.jpegCollectFileParts(fh, options)
+        self._closefh(fh)
+
+        if ret is None:
+            raise ValueError('No IPTC data found')
+
+        (start, end, adobe) = ret
+        if options is not None and 'discardAdobeParts' in options:
+            adobe = None
+
+        buf.write(start)
+        ch = self.c_charset_r.get(self.out_charset, None)
+        # writing the character set is not the best practice
+        # - couldn't find the needed place (record) for it yet!
+        if SURELY_WRITE_CHARSET_INFO and ch is not None:
+            buf.write(pack("!BBBHH", 0x1c, 1, 90, 4, ch))
+
+        data = self.photoshopIIMBlock(adobe, self.packedIIMData())
+        buf.write(data)
+        buf.write(end)
+
+        return buf
+
     def __del__(self):
         """Called when object is destroyed.
         No action necessary in this case."""
