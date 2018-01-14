@@ -202,13 +202,13 @@ AUTHOR
 
 Josh Carter, josh@multipart-mixed.com
 """
+import contextlib
 import logging
 import os
 import shutil
 import sys
 import tempfile
 from struct import pack, unpack
-
 
 __version__ = '1.9.5-8'
 __author__ = 'Gulácsi, Tamás'
@@ -232,6 +232,24 @@ class EOFException(Exception):
 
     def __str__(self):
         return self._str
+
+
+@contextlib.contextmanager
+def smart_open(path, *args, **kwargs):
+    """
+    Lets you treat a fild handler as if it were a file path.
+
+    Based on https://stackoverflow.com/a/17603000/8049516
+    """
+    if hasattr(path, 'read'):
+        fh = path
+    else:
+        fh = open(path, *args, **kwargs)
+
+    try:
+        yield fh
+    finally:
+        fh.close()
 
 
 def push(diction, key, value):
@@ -424,35 +442,34 @@ class IPTCInfo:
 
     def __init__(self, fobj, force=False, inp_charset=None, out_charset=None,
                  *args, **kwds):
-        # Open file and snarf data from it.
-        self._data = IPTCData({'supplemental category': [], 'keywords': [],
-                               'contact': []})
-        if duck_typed(fobj, 'read'):
+        self._data = IPTCData({
+            'supplemental category': [],
+            'keywords': [],
+            'contact': [],
+        })
+        if duck_typed(fobj, 'read'):  # DELETEME
             self._filename = None
             self._fh = fobj
         else:
             self._filename = fobj
 
-        fh = self._getfh()
         self.inp_charset = inp_charset
         self.out_charset = out_charset or inp_charset
 
-        datafound = self.scanToFirstIMMTag(fh)
-        if datafound or force:
-            # Do the real snarfing here
-            if datafound:
-                self.collectIIMInfo(fh)
-        else:
-            logger.warn("No IPTC data found.")
-            self._closefh(fh)
-            # raise Exception("No IPTC data found.")
-        self._closefh(fh)
+        with smart_open(fobj, 'rb') as fh:
+            datafound = self.scanToFirstIMMTag(fh)
+            if datafound or force:
+                # Do the real snarfing here
+                if datafound:
+                    self.collectIIMInfo(fh)
+            else:
+                logger.warn('No IPTC data found in %s', fobj)
 
-    def _closefh(self, fh):
+    def _closefh(self, fh):  # DELETEME
         if fh and self._filename is not None:
             fh.close()
 
-    def _getfh(self, mode='r'):
+    def _getfh(self, mode='r'):  # DELETEME
         assert self._filename is not None or self._fh is not None
         if self._filename is not None:
             fh = open(self._filename, (mode + 'b').replace('bb', 'b'))
@@ -629,11 +646,7 @@ class IPTCInfo:
         if fh.tell() - pos != length:
             raise EOFException()
 
-    #######################################################################
-    # File parsing functions (private)
-    #######################################################################
-
-    def scanToFirstIMMTag(self, fh):  # OK
+    def scanToFirstIMMTag(self, fh):
         """Scans to first IIM Record 2 tag in the file. The will either
         use smart scanning for Jpegs or blind scanning for other file
         types."""
@@ -644,17 +657,14 @@ class IPTCInfo:
             logger.warn("File not a JPEG, trying blindScan")
             return self.blindScan(fh)
 
-    def fileIsJpeg(self, fh):  # OK
+    def fileIsJpeg(self, fh):
         """Checks to see if this file is a Jpeg/JFIF or not. Will reset
         the file position back to 0 after it's done in either case."""
-
-        # reset to beginning just in case
-        assert duck_typed(fh, ['read', 'seek'])
         fh.seek(0, 0)
-        if debugMode > 0:
+        if debugMode:
             logger.info("Opening 16 bytes of file: %r", self.hexDump(fh.read(16)))
             fh.seek(0, 0)
-        # check start of file marker
+
         ered = False
         try:
             (ff, soi) = fh.read(2)
