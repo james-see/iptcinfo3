@@ -30,8 +30,7 @@ That's where this IPTCInfo Python module comes into play. You can embed
 information using many programs, including Adobe Photoshop, and
 IPTCInfo will let your web server -- and other automated server
 programs -- pull it back out. You can use the information directly in
-Python programs, export it to XML, or even export SQL statements ready
-to be fed into a database.
+Python programs.
 
 
 PREFACE
@@ -159,40 +158,6 @@ DESCRIPTION
     yourself, the new image will have an Adobe part with only the IPTC
     information.
 
-    XML AND SQL EXPORT FEATURES
-
-    IPTCInfo also allows you to easily generate XML and SQL from the image
-    metadata. For XML, call:
-
-        xml = info.exportXML('entity-name', extra-data,
-                                                  'optional output file name')
-
-    This returns XML containing all image metadata. Attribute names are
-    translated into XML tags, making adjustments to spaces and slashes
-    for compatibility. (Spaces become underbars, slashes become dashes.)
-    You provide an entity name; all data will be contained within this
-    entity.  You can optionally provides a reference to a hash of extra
-    data. This will get put into the XML, too. (Example: you may want to
-    put info on the image's location into the XML.) Keys must be valid
-    XML tag names.  You can also provide a filename, and the XML will be
-    dumped into there.
-
-    For SQL, it goes like this:
-
-        my mappings = {
-                  'IPTC dataset name here': 'your table column name here',
-                  'caption/abstract':       'caption',
-                  'city':                   'city',
-                  'province/state':         'state} # etc etc etc.
-
-        statement = info.exportSQL('mytable', mappings, extra-data)
-
-    This returns a SQL statement to insert into your given table name a
-    set of values from the image. You pass in a reference to a hash
-    which maps IPTC dataset names into column names for the database
-    table. As with XML export, you can also provide extra information to
-    be stuck into the SQL.
-
 IPTC ATTRIBUTE REFERENCE
 
     object name               originating program
@@ -239,7 +204,6 @@ Josh Carter, josh@multipart-mixed.com
 """
 import logging
 import os
-import re
 import shutil
 import sys
 import tempfile
@@ -437,7 +401,7 @@ def _getSetSomeList(name):
     return (getList, setList)
 
 
-class IPTCInfo(object):
+class IPTCInfo:
     """info = IPTCInfo('image filename goes here')
 
     File can be a file-like object or a string. If it is a string, it is
@@ -649,11 +613,6 @@ class IPTCInfo(object):
         raise Exception('You cannot overwrite the data, only its elements!')
     data = property(getData, setData)
 
-    keywords = property(*_getSetSomeList('keywords'))
-    supplementalCategories = property(
-        *_getSetSomeList('supplemental category'))
-    contacts = property(*_getSetSomeList('contact'))
-
     def __str__(self):
         return ('charset: %s\n%s' % (self.inp_charset,
                 str(dict((self._data.keyAsStr(k), v)
@@ -678,114 +637,6 @@ class IPTCInfo(object):
         fh.seek(length, 1)
         if fh.tell() - pos != length:
             raise EOFException()
-
-    #######################################################################
-    # XML, SQL export
-    #######################################################################
-
-    def exportXML(self, basetag, extra, filename):
-        """xml = info.exportXML('entity-name', extra-data,
-                                'optional output file name')
-
-        Exports XML containing all image metadata. Attribute names are
-        translated into XML tags, making adjustments to spaces and slashes
-        for compatibility. (Spaces become underbars, slashes become
-        dashes.)  Caller provides an entity name; all data will be
-        contained within this entity. Caller optionally provides a
-        reference to a hash of extra data. This will be output into the
-        XML, too. Keys must be valid XML tag names. Optionally provide a
-        filename, and the XML will be dumped into there."""
-
-        def P(s):
-            return '  ' * off + s + '\n'
-        off = 0
-
-        if len(basetag) == 0:
-            basetag = 'photo'
-        out = [P("<%s>" % basetag)]
-
-        off += 1
-        for k, v in list((isinstance(extra, dict) and [extra] or [{}])[0].items()):
-            out.append(P("<%s>%s</%s>" % (k, v, k)))
-
-        for k, v in list(self._data.items()):
-            if not isinstance(v, list):
-                key = re.sub('/', '-', re.sub(' +', ' ', self._data.keyAsStr(k)))
-                out.append(P("<%s>%s</%s>" % (key, v, key)))
-
-        # print keywords
-        kw = self.keywords()
-        if kw and len(kw) > 0:
-            out.append(P("<keywords>"))
-            off += 1
-            for k in kw:
-                out.append(P("<keyword>%s</keyword>" % k))
-            off -= 1
-            out.append(P("</keywords>"))
-
-        # print supplemental categories
-        sc = self.supplementalCategories()
-        if sc and len(sc) > 0:
-            out.append(P("<supplemental_categories>"))
-            off += 1
-            for k in sc:
-                out.append(
-                    P("<supplemental_category>%s</supplemental_category>" % k))
-            off -= 1
-            out.append(P("</supplemental_categories>"))
-
-        # print contacts
-        kw = self.contacts()
-        if kw and len(kw) > 0:
-            out.append(P("<contacts>"))
-            off += 1
-            for k in kw:
-                out.append(P("<contact>%s</contact>" % k))
-            off -= 1
-            out.append(P("</contacts>"))
-
-        # close base tag
-        off -= 1
-        out.append(P("</%s>" % basetag))
-
-        # export to file if caller asked for it.
-        if len(filename) > 0:
-            xmlout = file(filename, 'wb')
-            xmlout.write(out)
-            xmlout.close()
-
-        return ''.join(out)
-
-    def exportSQL(self, tablename, mappings, extra):
-        """statement = info.exportSQL('mytable', mappings, extra-data)
-
-        mappings = {
-            'IPTC dataset name here': 'your table column name here',
-            'caption/abstract': 'caption',
-            'city': 'city',
-            'province/state': 'state} # etc etc etc.
-
-        Returns a SQL statement to insert into your given table name a set
-        of values from the image. Caller passes in a reference to a hash
-        which maps IPTC dataset names into column names for the database
-        table. Optionally pass in a ref to a hash of extra data which will
-        also be included in the insert statement. Keys in that hash must
-        be valid column names."""
-
-        if (tablename is None or mappings is None):
-            return None
-        statement = columns = values = None
-
-        E = lambda s: "'%s'" % re.sub("'", "''", s)  # escape single quotes
-
-        # start with extra data, if any
-        columns = ', '.join(list(extra.keys()) + list(mappings.keys()))
-        values = ', '.join(map(E, list(extra.values()) + [self.data[k] for k in list(mappings.keys())]))
-        # process our data
-
-        statement = "INSERT INTO %s (%s) VALUES (%s)" % (tablename, columns, values)
-
-        return statement
 
     #######################################################################
     # File parsing functions (private)
