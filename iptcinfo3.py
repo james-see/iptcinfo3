@@ -594,11 +594,11 @@ class IPTCInfo:
         No action necessary in this case."""
         pass
 
-    #######################################################################
-    # Attributes for clients
-    #######################################################################
+    def __len__(self):
+        return len(self._data)
 
     def __getitem__(self, key):
+        # TODO case-insensitive like http headers
         return self._data[key]
 
     def __setitem__(self, key, value):
