@@ -237,22 +237,21 @@ AUTHOR
 
 Josh Carter, josh@multipart-mixed.com
 """
+import logging
+import os
+import re
+import shutil
+import sys
+import tempfile
+from struct import pack, unpack
+
 
 __version__ = '1.9.5-8'
 __author__ = 'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
 
-from struct import pack, unpack
-#~ from cStringIO import StringIO
-import sys
-import re
-import os
-import tempfile
-import shutil
-
-import logging
-LOG = logging.getLogger('iptcinfo')
+logger = logging.getLogger('iptcinfo')
 LOGDBG = logging.getLogger('iptcinfo.debug')
 
 
@@ -286,12 +285,16 @@ def duck_typed(obj, prefs):
             return False
     return True
 
+
 sys_enc = sys.getfilesystemencoding()
 
 #  Debug off for production use
 debugMode = 0
 
-ord3 = lambda x: x if isinstance(x, int) else ord(x)
+
+def ord3(x):
+    return x if isinstance(x, int) else ord(x)
+
 
 #####################################
 # These names match the codes defined in ITPC's IIM record 2.
@@ -342,7 +345,7 @@ c_datasets = {
     120: 'caption/abstract',
     121: 'local caption',
     122: 'writer/editor',
-#  125: 'rasterized caption', # unsupported (binary data)
+    # 125: 'rasterized caption', # unsupported (binary data)
     130: 'image type',
     131: 'image orientation',
     135: 'language identifier',
@@ -369,7 +372,6 @@ c_datasets = {
 }
 
 c_datasets_r = dict([(v, k) for k, v in c_datasets.items()])
-# del k, v
 
 
 class IPTCData(dict):
@@ -383,13 +385,11 @@ class IPTCData(dict):
 
     @classmethod
     def keyAsInt(cls, key):
-        #~ global c_datasets_r
         if isinstance(key, int):
             return key
         elif key in c_datasets_r:
             return c_datasets_r[key]
-        elif (key.startswith(cls.c_cust_pre)
-                    and key[len(cls.c_cust_pre):].isdigit()):
+        elif (key.startswith(cls.c_cust_pre) and key[len(cls.c_cust_pre):].isdigit()):
             return int(key[len(cls.c_cust_pre):])
         else:
             raise KeyError("Key %s is not in %s!" % (key, list(c_datasets_r.keys())))
@@ -410,9 +410,7 @@ class IPTCData(dict):
 
     def __setitem__(self, name, value):
         key = self.keyAsInt(name)
-        if key in self and isinstance(dict.__getitem__(self, key),
-                (tuple, list)):
-            #print key, c_datasets[key], o.__getitem__(key)
+        if key in self and isinstance(dict.__getitem__(self, key), (tuple, list)):
             if isinstance(value, (tuple, list)):
                 dict.__setitem__(self, key, value)
             else:
@@ -432,7 +430,7 @@ def _getSetSomeList(name):
             self._data[name] = list(value)
         elif isinstance(value, str):
             self._data[name] = [value]
-            LOG.warn('Warning: IPTCInfo.%s is a list!', name)
+            logger.warn('Warning: IPTCInfo.%s is a list!', name)
         else:
             raise ValueError('IPTCInfo.%s is a list!' % name)
 
@@ -480,7 +478,7 @@ class IPTCInfo(object):
             if datafound:
                 self.collectIIMInfo(fh)
         else:
-            LOG.warn("No IPTC data found.")
+            logger.warn("No IPTC data found.")
             self._closefh(fh)
             # raise Exception("No IPTC data found.")
         self._closefh(fh)
@@ -494,7 +492,7 @@ class IPTCInfo(object):
         if self._filename is not None:
             fh = open(self._filename, (mode + 'b').replace('bb', 'b'))
             if not fh:
-                LOG.error("Can't open file (%r)", self._filename)
+                logger.error("Can't open file (%r)", self._filename)
                 return None
             else:
                 return fh
@@ -521,7 +519,6 @@ class IPTCInfo(object):
 
     def _filepos(self, fh):
         fh.flush()
-        #~ return 'POS=%d\n' % fh.tell()
         return fh.tell()
 
     def saveAs(self, newfile, options=None):
@@ -531,13 +528,12 @@ class IPTCInfo(object):
         assert fh
         fh.seek(0, 0)
         if not self.fileIsJpeg(fh):
-            LOG.error("Source file is not a Jpeg; I can only save Jpegs."
-                " Sorry.")
+            logger.error("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
             return None
         ret = self.jpegCollectFileParts(fh, options)
         self._closefh(fh)
         if ret is None:
-            LOG.error("collectfileparts failed")
+            logger.error("collectfileparts failed")
             raise Exception('collectfileparts failed')
 
         (start, end, adobe) = ret
@@ -552,11 +548,9 @@ class IPTCInfo(object):
         (tmpfd, tmpfn) = tempfile.mkstemp()
         if self._filename and os.path.exists(self._filename):
             shutil.copystat(self._filename, tmpfn)
-        #os.close(tmpfd)
         tmpfh = os.fdopen(tmpfd, 'wb')
-        #tmpfh = open(tmpfn, 'wb')
         if not tmpfh:
-            LOG.error("Can't open output file %r", tmpfn)
+            logger.error("Can't open output file %r", tmpfn)
             return None
         LOGDBG.debug('start=%d end=%d', len(start), len(end))
         tmpfh.write(start)
@@ -576,8 +570,6 @@ class IPTCInfo(object):
         LOGDBG.debug('pos: %d', self._filepos(tmpfh))
         tmpfh.flush()
 
-        #print tmpfh, tmpfn, newfile
-        #copy the successfully written file back to the given file
         if hasattr(tmpfh, 'getvalue'):  # StringIO
             fh2 = open(newfile, 'wb')
             fh2.truncate()
@@ -668,12 +660,9 @@ class IPTCInfo(object):
                          for k, v in list(self._data.items())))))
 
     def readExactly(self, fh, length):
-        """readExactly
-
-        Reads exactly length bytes and throws an exception if EOF is hitten
-        before.
         """
-        ## assert isinstance(fh, file)
+        Reads exactly length bytes and throws an exception if EOF is hit before.
+        """
         assert duck_typed(fh, 'read')  # duck typing
         buf = fh.read(length)
         if buf is None or len(buf) < length:
@@ -681,11 +670,9 @@ class IPTCInfo(object):
         return buf
 
     def seekExactly(self, fh, length):
-        """seekExactly
-
+        """
         Seeks length bytes from the current position and checks the result
         """
-        ## assert isinstance(fh, file)
         assert duck_typed(fh, ['seek', 'tell'])  # duck typing
         pos = fh.tell()
         fh.seek(length, 1)
@@ -710,7 +697,6 @@ class IPTCInfo(object):
         filename, and the XML will be dumped into there."""
 
         def P(s):
-            #global off
             return '  ' * off + s + '\n'
         off = 0
 
@@ -719,16 +705,12 @@ class IPTCInfo(object):
         out = [P("<%s>" % basetag)]
 
         off += 1
-        # dump extra info first, if any
-        for k, v in list((isinstance(extra, dict)
-                and [extra] or [{}])[0].items()):
+        for k, v in list((isinstance(extra, dict) and [extra] or [{}])[0].items()):
             out.append(P("<%s>%s</%s>" % (k, v, k)))
 
-        # dump our stuff
         for k, v in list(self._data.items()):
             if not isinstance(v, list):
-                key = re.sub('/', '-',
-                    re.sub(' +', ' ', self._data.keyAsStr(k)))
+                key = re.sub('/', '-', re.sub(' +', ' ', self._data.keyAsStr(k)))
                 out.append(P("<%s>%s</%s>" % (key, v, key)))
 
         # print keywords
@@ -748,7 +730,7 @@ class IPTCInfo(object):
             off += 1
             for k in sc:
                 out.append(
-                P("<supplemental_category>%s</supplemental_category>" % k))
+                    P("<supplemental_category>%s</supplemental_category>" % k))
             off -= 1
             out.append(P("</supplemental_categories>"))
 
@@ -798,12 +780,10 @@ class IPTCInfo(object):
 
         # start with extra data, if any
         columns = ', '.join(list(extra.keys()) + list(mappings.keys()))
-        values = ', '.join(map(E, list(extra.values())
-            + [self.data[k] for k in list(mappings.keys())]))
+        values = ', '.join(map(E, list(extra.values()) + [self.data[k] for k in list(mappings.keys())]))
         # process our data
 
-        statement = "INSERT INTO %s (%s) VALUES (%s)" \
-                                % (tablename, columns, values)
+        statement = "INSERT INTO %s (%s) VALUES (%s)" % (tablename, columns, values)
 
         return statement
 
@@ -815,12 +795,11 @@ class IPTCInfo(object):
         """Scans to first IIM Record 2 tag in the file. The will either
         use smart scanning for Jpegs or blind scanning for other file
         types."""
-        ## assert isinstance(fh, file)
         if self.fileIsJpeg(fh):
-            LOG.info("File is Jpeg, proceeding with JpegScan")
+            logger.info("File is Jpeg, proceeding with JpegScan")
             return self.jpegScan(fh)
         else:
-            LOG.warn("File not a JPEG, trying blindScan")
+            logger.warn("File not a JPEG, trying blindScan")
             return self.blindScan(fh)
 
     def fileIsJpeg(self, fh):  # OK
@@ -828,12 +807,10 @@ class IPTCInfo(object):
         the file position back to 0 after it's done in either case."""
 
         # reset to beginning just in case
-        ## assert isinstance(fh, file)
         assert duck_typed(fh, ['read', 'seek'])
         fh.seek(0, 0)
         if debugMode > 0:
-            LOG.info("Opening 16 bytes of file: %r",
-                self.hexDump(fh.read(16)))
+            logger.info("Opening 16 bytes of file: %r", self.hexDump(fh.read(16)))
             fh.seek(0, 0)
         # check start of file marker
         ered = False
@@ -867,7 +844,6 @@ class IPTCInfo(object):
         programs have (supposedly) adopted Adobe's technique of putting
         the data in APP13."""
         # Skip past start of file marker
-        ## assert isinstance(fh, file)
         try:
             (ff, soi) = self.readExactly(fh, 2)
         except EOFException:
@@ -875,7 +851,7 @@ class IPTCInfo(object):
 
         if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
             self.error = "JpegScan: invalid start of file"
-            LOG.error(self.error)
+            logger.error(self.error)
             return None
         # Scan for the APP13 marker which will contain our IPTC info (I hope).
         while 1:
@@ -889,7 +865,7 @@ class IPTCInfo(object):
                 err = "JpegSkipVariable failed"
             if err is not None:
                 self.error = err
-                LOG.warn(err)
+                logger.warn(err)
                 return None
 
         # If were's here, we must have found the right marker. Now
@@ -900,7 +876,6 @@ class IPTCInfo(object):
         """Scans to the start of the next valid-looking marker. Return
         value is the marker id."""
 
-        ## assert isinstance(fh, file)
         # Find 0xff byte. We should already be on it.
         try:
             byte = self.readExactly(fh, 1)
@@ -908,7 +883,7 @@ class IPTCInfo(object):
             return None
 
         while ord3(byte) != 0xff:
-            LOG.warn("JpegNextMarker: warning: bogus stuff in Jpeg file")
+            logger.warn("JpegNextMarker: warning: bogus stuff in Jpeg file")
             try:
                 byte = self.readExactly(fh, 1)
             except EOFException:
@@ -923,7 +898,7 @@ class IPTCInfo(object):
                 break
 
         # byte should now contain the marker id.
-        LOG.debug("JpegNextMarker: at marker %02X (%d)", ord3(byte), ord3(byte))
+        logger.debug("JpegNextMarker: at marker %02X (%d)", ord3(byte), ord3(byte))
         return byte
 
     def jpegGetVariableLength(self, fh):  # OK
@@ -931,16 +906,15 @@ class IPTCInfo(object):
         at start must be on the marker itself, e.g. immediately after call
         to JPEGNextMarker. File position is updated to just past the
         length field."""
-        ## assert isinstance(fh, file)
         try:
             length = unpack('!H', self.readExactly(fh, 2))[0]
         except EOFException:
             return 0
-        LOG.debug('JPEG variable length: %d', length)
+        logger.debug('JPEG variable length: %d', length)
 
         # Length includes itself, so must be at least 2
         if length < 2:
-            LOG.warn("JPEGGetVariableLength: erroneous JPEG marker length")
+            logger.warn("JPEGGetVariableLength: erroneous JPEG marker length")
             return 0
         return length - 2
 
@@ -949,7 +923,6 @@ class IPTCInfo(object):
         called between calls to JpegNextMarker to ensure JpegNextMarker is
         at the start of data it can properly parse."""
 
-        ## assert isinstance(fh, file)
         # Get the marker parameter length count
         length = self.jpegGetVariableLength(fh)
         if length == 0:
@@ -960,8 +933,7 @@ class IPTCInfo(object):
             try:
                 temp = self.readExactly(fh, length)
             except EOFException:
-                LOG.error("JpegSkipVariable: read failed while skipping"
-                    " var data")
+                logger.error("JpegSkipVariable: read failed while skipping var data")
                 return None
         # prints out a heck of a lot of stuff
         # self.hexDump(temp)
@@ -970,16 +942,15 @@ class IPTCInfo(object):
             try:
                 self.seekExactly(fh, length)
             except EOFException:
-                LOG.error("JpegSkipVariable: read failed while skipping"
-                    " var data")
+                logger.error("JpegSkipVariable: read failed while skipping var data")
                 return None
 
         return (rSave is not None and [temp] or [True])[0]
 
     c_charset = {100: 'iso8859_1', 101: 'iso8859_2', 109: 'iso8859_3',
-                  110: 'iso8859_4', 111: 'iso8859_5', 125: 'iso8859_7',
-                  127: 'iso8859_6', 138: 'iso8859_8',
-                  196: 'utf_8'}
+                 110: 'iso8859_4', 111: 'iso8859_5', 125: 'iso8859_7',
+                 127: 'iso8859_6', 138: 'iso8859_8',
+                 196: 'utf_8'}
     c_charset_r = dict([(v, k) for k, v in list(c_charset.items())])
 
     def blindScan(self, fh, MAX=8192):  # OK
@@ -989,19 +960,18 @@ class IPTCInfo(object):
         8k of data. (This limit may need to be changed or eliminated
         depending on how other programs choose to store IIM.)"""
 
-        ## assert isinstance(fh, file)
         assert duck_typed(fh, 'read')
         offset = 0
         # keep within first 8192 bytes
         # NOTE: this may need to change
-        LOG.debug('blindScan: starting scan, max length %d', MAX)
+        logger.debug('blindScan: starting scan, max length %d', MAX)
 
         # start digging
         while offset <= MAX:
             try:
                 temp = self.readExactly(fh, 1)
             except EOFException:
-                LOG.warn("BlindScan: hit EOF while scanning")
+                logger.warn("BlindScan: hit EOF while scanning")
                 return None
             # look for tag identifier 0x1c
             if ord3(temp) == 0x1c:
@@ -1011,25 +981,21 @@ class IPTCInfo(object):
                 if record == 1 and dataset == 90:
                     # found character set's record!
                     try:
-                        temp = self.readExactly(fh,
-                            self.jpegGetVariableLength(fh))
+                        temp = self.readExactly(fh, self.jpegGetVariableLength(fh))
                         try:
                             cs = unpack('!H', temp)[0]
                         except:
-                            LOG.warn('WARNING: problems with charset '
-                                    'recognition (%r)', temp)
+                            logger.warn('WARNING: problems with charset recognition (%r)', temp)
                             cs = None
                         if cs in self.c_charset:
                             self.inp_charset = self.c_charset[cs]
-                        LOG.info("BlindScan: found character set '%s'"
-                            " at offset %d", self.inp_charset, offset)
+                        logger.info("BlindScan: found character set '%s' at offset %d", self.inp_charset, offset)
                     except EOFException:
                         pass
 
                 elif record == 2:
                     # found it. seek to start of this tag and return.
-                    LOG.debug("BlindScan: found IIM start at offset %d",
-                        offset)
+                    logger.debug("BlindScan: found IIM start at offset %d", offset)
                     try:  # seek rel to current position
                         self.seekExactly(fh, -3)
                     except EOFException:
@@ -1053,7 +1019,6 @@ class IPTCInfo(object):
         this reads all the data into our object's hashes"""
         # NOTE: file should already be at the start of the first
         # IPTC code: record 2, dataset 0.
-        ## assert isinstance(fh, file)
         assert duck_typed(fh, 'read')
         while 1:
             try:
@@ -1068,19 +1033,15 @@ class IPTCInfo(object):
 
             alist = {'tag': tag, 'record': record, 'dataset': dataset,
                      'length': length}
-            LOG.debug('\n'.join('%s\t: %s' % (k, v)
-                for k, v in list(alist.items())))
+            logger.debug('\n'.join('%s\t: %s' % (k, v) for k, v in list(alist.items())))
             value = fh.read(length)
 
             if self.inp_charset:
                 try:
-                    value = str(value, encoding=self.inp_charset,
-                        errors='strict')
+                    value = str(value, encoding=self.inp_charset, errors='strict')
                 except:
-                    LOG.warn('Data "%r" is not in encoding %s!',
-                        value, self.inp_charset)
-                    value = str(value, encoding=self.inp_charset,
-                        errors='replace')
+                    logger.warn('Data "%r" is not in encoding %s!', value, self.inp_charset)
+                    value = str(value, encoding=self.inp_charset, errors='replace')
 
             # try to extract first into _listdata (keywords, categories)
             # and, if unsuccessful, into _data. Tags which are not in the
@@ -1101,7 +1062,6 @@ class IPTCInfo(object):
         stuff after, and the contents of the Adobe Resource Block that the
         IPTC data goes in. Returns None if a file parsing error occured."""
 
-        ## assert isinstance(fh, file)
         assert duck_typed(fh, ['seek', 'read'])
         adobeParts = b''
         start = []
@@ -1112,7 +1072,7 @@ class IPTCInfo(object):
         (ff, soi) = fh.read(2)
         if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
             self.error = "JpegScan: invalid start of file"
-            LOG.error(self.error)
+            logger.error(self.error)
             return None
 
         # Begin building start of file
@@ -1125,7 +1085,7 @@ class IPTCInfo(object):
         app0data = self.jpegSkipVariable(fh, app0data)
         if app0data is None:
             self.error = 'jpegSkipVariable failed'
-            LOG.error(self.error)
+            logger.error(self.error)
             return None
 
         if ord3(marker) == 0xe0 or not discardAppParts:
@@ -1141,8 +1101,7 @@ class IPTCInfo(object):
             start.append(pack("BB", 0xff, 0xe0))
             start.append(pack("!H", 16))    # length (including these 2 bytes)
             start.append("JFIF")            # format
-            start.append(pack("BB", 1, 2))  # call it version 1.2 (current
-                                            # JFIF)
+            start.append(pack("BB", 1, 2))  # call it version 1.2 (current JFIF)
             start.append(pack('8B', 0))     # zero everything else
 
         # Now scan through all markers in file until we hit image data or
@@ -1152,23 +1111,23 @@ class IPTCInfo(object):
             marker = self.jpegNextMarker(fh)
             if marker is None or ord3(marker) == 0:
                 self.error = "Marker scan failed"
-                LOG.error(self.error)
+                logger.error(self.error)
                 return None
             # Check for end of image
             elif ord3(marker) == 0xd9:
-                LOG.debug("JpegCollectFileParts: saw end of image marker")
+                logger.debug("JpegCollectFileParts: saw end of image marker")
                 end.append(pack("BB", 0xff, ord3(marker)))
                 break
             # Check for start of compressed data
             elif ord3(marker) == 0xda:
-                LOG.debug("JpegCollectFileParts: saw start of compressed data")
+                logger.debug("JpegCollectFileParts: saw start of compressed data")
                 end.append(pack("BB", 0xff, ord3(marker)))
                 break
             partdata = b''
             partdata = self.jpegSkipVariable(fh, partdata)
             if not partdata:
                 self.error = "JpegSkipVariable failed"
-                LOG.error(self.error)
+                logger.error(self.error)
                 return None
             partdata = bytes(partdata)
 
@@ -1272,10 +1231,8 @@ class IPTCInfo(object):
                 res = str(text, encoding=self.inp_charset).encode(
                     out_charset)
             except (UnicodeEncodeError, UnicodeDecodeError):
-                LOG.error("_enc: charset %s is not working for %s",
-                    self.inp_charset, text)
-                res = str(text, encoding=self.inp_charset,
-                    errors='replace').encode(out_charset)
+                logger.error("_enc: charset %s is not working for %s", self.inp_charset, text)
+                res = str(text, encoding=self.inp_charset, errors='replace').encode(out_charset)
         elif isinstance(text, (list, tuple)):
             res = type(text)(list(map(self._enc, text)))
         return res
@@ -1295,10 +1252,9 @@ class IPTCInfo(object):
             if len(value) == 0:
                 continue
             if not (isinstance(dataset, int) and dataset in c_datasets):
-                LOG.warn("PackedIIMData: illegal dataname '%s' (%d)",
-                    dataset, dataset)
+                logger.warn("PackedIIMData: illegal dataname '%s' (%d)", dataset, dataset)
                 continue
-            LOG.debug('packedIIMData %r -> %r', value, self._enc(value))
+            logger.debug('packedIIMData %r -> %r', value, self._enc(value))
             value = self._enc(value)
             if not isinstance(value, list):
                 value = bytes(value)
@@ -1359,7 +1315,7 @@ class IPTCInfo(object):
             if isinstance(row, list):
                 row = b''.join(row)
             res.append(
-            ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') % \
+                ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') % \
                 tuple(list(map(ord3, list(row))) + [''.join(map(P, row))]))
         return ''.join(res)
 
@@ -1373,7 +1329,7 @@ class IPTCInfo(object):
         # Skip past start of file marker
         (ff, soi) = fh.read(2)
         if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
-            LOG.error("JpegScan: invalid start of file")
+            logger.error("JpegScan: invalid start of file")
         else:
             # scan to 0xDA (start of scan), dumping the markers we see between
             # here and there.
@@ -1383,17 +1339,18 @@ class IPTCInfo(object):
                     break
 
                 if ord3(marker) == 0:
-                    LOG.warn("Marker scan failed")
+                    logger.warn("Marker scan failed")
                     break
                 elif ord3(marker) == 0xd9:
-                    LOG.debug("Marker scan hit end of image marker")
+                    logger.debug("Marker scan hit end of image marker")
                     break
 
                 if not self.jpegSkipVariable(fh):
-                    LOG.warn("JpegSkipVariable failed")
+                    logger.warn("JpegSkipVariable failed")
                     return None
 
         self._closefh(fh)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
