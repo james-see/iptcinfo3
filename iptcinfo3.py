@@ -341,7 +341,7 @@ c_datasets_r = dict([(v, k) for k, v in c_datasets.items()])
 class IPTCData(dict):
     """Dict with int/string keys from c_listdatanames"""
     def __init__(self, diction={}, *args, **kwds):
-        dict.__init__(self, *args, **kwds)
+        dict.__init__(self, *args, **kwds)  # FIXME super()
         self.update(dict((self.keyAsInt(k), v)
                          for k, v in list(diction.items())))
 
@@ -420,10 +420,11 @@ class IPTCInfo:
     be VERY careful to use bytestrings overall with the SAME ENCODING!
     """
 
+    error = None
+
     def __init__(self, fobj, force=False, inp_charset=None, out_charset=None,
                  *args, **kwds):
         # Open file and snarf data from it.
-        self._error = None
         self._data = IPTCData({'supplemental category': [], 'keywords': [],
                                'contact': []})
         if duck_typed(fobj, 'read'):
@@ -466,15 +467,6 @@ class IPTCInfo:
     #######################################################################
     # New, Save, Destroy, Error
     #######################################################################
-
-    def get_error(self):
-        """Returns the last error message"""
-        return self._error
-
-    def set_error(self, obj):
-        '''Sets the last error message'''
-        self._error = obj
-    error = property(get_error, set_error)
 
     def save(self, options=None):
         """Saves Jpeg with IPTC data back to the same file it came from."""
