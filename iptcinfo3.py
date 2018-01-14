@@ -29,6 +29,9 @@ __version__ = '1.9.5-8'
 __author__ = 'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
+debugMode = 0
+#  Debug off for production use
+
 
 logger = logging.getLogger('iptcinfo')
 LOGDBG = logging.getLogger('iptcinfo.debug')
@@ -83,10 +86,26 @@ def duck_typed(obj, prefs):
     return True
 
 
-sys_enc = sys.getfilesystemencoding()
+def hex_dump(dump):
+    """Very helpful when debugging."""
+    if not debugMode:
+        return
 
-#  Debug off for production use
-debugMode = 0
+    length = len(dump)
+    P = lambda z: ((ord3(z) >= 0x21 and ord3(z) <= 0x7e) and [z] or ['.'])[0]
+    ROWLEN = 18
+    res = ['\n']
+    for j in range(length // ROWLEN + int(length % ROWLEN > 0)):
+        row = dump[j * ROWLEN:(j + 1) * ROWLEN]
+        if isinstance(row, list):
+            row = b''.join(row)
+        res.append(
+            ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') % \
+            tuple(list(map(ord3, list(row))) + [''.join(map(P, row))]))
+    return ''.join(res)
+
+
+sys_enc = sys.getfilesystemencoding()
 
 
 def ord3(x):
@@ -299,21 +318,21 @@ class IPTCInfo:
     def save(self, options=None):
         """Saves Jpeg with IPTC data back to the same file it came from."""
         assert self._filename is not None
-        return self.saveAs(self._filename, options)
+        return self.save_as(self._filename, options)
 
     def _filepos(self, fh):
         fh.flush()
         return fh.tell()
 
-    def saveAs(self, newfile, options=None):
+    def save_as(self, newfile, options=None):
         """Saves Jpeg with IPTC data to a given file name."""
-        # Open file and snarf data from it.
         fh = self._getfh()
         assert fh
         fh.seek(0, 0)
         if not self.fileIsJpeg(fh):
             logger.error("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
             return None
+
         ret = self.jpegCollectFileParts(fh, options)
         self._closefh(fh)
         if ret is None:
@@ -322,7 +341,7 @@ class IPTCInfo:
 
         (start, end, adobe) = ret
         LOGDBG.debug('start: %d, end: %d, adobe:%d', *list(map(len, ret)))
-        self.hexDump(start), len(end)
+        hex_dump(start)
         LOGDBG.debug('adobe1: %r', adobe)
         if options is not None and 'discardAdobeParts' in options:
             adobe = None
@@ -336,6 +355,7 @@ class IPTCInfo:
         if not tmpfh:
             logger.error("Can't open output file %r", tmpfn)
             return None
+
         LOGDBG.debug('start=%d end=%d', len(start), len(end))
         tmpfh.write(start)
         # character set
@@ -347,7 +367,7 @@ class IPTCInfo:
 
         LOGDBG.debug('pos: %d', self._filepos(tmpfh))
         data = self.photoshopIIMBlock(adobe, self.packedIIMData())
-        LOGDBG.debug('data len=%d dmp=%r', len(data), self.hexDump(data))
+        LOGDBG.debug('data len=%d dmp=%r', len(data), hex_dump(data))
         tmpfh.write(data)
         LOGDBG.debug('pos: %d', self._filepos(tmpfh))
         tmpfh.write(end)
@@ -473,7 +493,7 @@ class IPTCInfo:
         the file position back to 0 after it's done in either case."""
         fh.seek(0, 0)
         if debugMode:
-            logger.info("Opening 16 bytes of file: %r", self.hexDump(fh.read(16)))
+            logger.info("Opening 16 bytes of file: %r", hex_dump(fh.read(16)))
             fh.seek(0, 0)
 
         ered = False
@@ -598,8 +618,6 @@ class IPTCInfo:
             except EOFException:
                 logger.error("JpegSkipVariable: read failed while skipping var data")
                 return None
-        # prints out a heck of a lot of stuff
-        # self.hexDump(temp)
         else:
             # Just seek
             try:
@@ -909,7 +927,7 @@ class IPTCInfo:
         # tag - record - dataset - len (short) - 4 (short)
         out.append(pack("!BBBHH", tag, record, 0, 2, 4))
 
-        LOGDBG.debug('out=%r', self.hexDump(out))
+        LOGDBG.debug('out=%r', hex_dump(out))
         # Iterate over data sets
         for dataset, value in list(self._data.items()):
             if len(value) == 0:
@@ -961,26 +979,6 @@ class IPTCInfo:
         out.append(resourceBlock)
 
         return b''.join(out)
-
-    #######################################################################
-    # Helpers, docs
-    #######################################################################
-
-    @staticmethod
-    def hexDump(dump):
-        """Very helpful when debugging."""
-        length = len(dump)
-        P = lambda z: ((ord3(z) >= 0x21 and ord3(z) <= 0x7e) and [z] or ['.'])[0]
-        ROWLEN = 18
-        res = ['\n']
-        for j in range(length // ROWLEN + int(length % ROWLEN > 0)):
-            row = dump[j * ROWLEN:(j + 1) * ROWLEN]
-            if isinstance(row, list):
-                row = b''.join(row)
-            res.append(
-                ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') % \
-                tuple(list(map(ord3, list(row))) + [''.join(map(P, row))]))
-        return ''.join(res)
 
     def jpegDebugScan(self, filename):
         """Also very helpful when debugging."""
