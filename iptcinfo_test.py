@@ -1,6 +1,32 @@
 import os
 
-from iptcinfo3 import file_is_jpeg, IPTCInfo
+import pytest
+
+from iptcinfo3 import (
+    EOFException,
+    file_is_jpeg,
+    IPTCData,
+    IPTCInfo,
+)
+
+
+def test_EOFException_message():
+    exp = EOFException()
+    assert str(exp) == ''
+
+    exp = EOFException('ugh', 'well')
+    assert str(exp) == 'ugh\nwell'
+
+
+def test_IPTCData():
+    data = IPTCData({105: 'Audiobook Narrator Really Going For Broke With Cajun Accent'})
+    assert data['headline'].startswith('Audiobook')
+    assert data[105].startswith('Audiobook')
+
+    data['keywords'] = ['foo']
+    data['keywords'] = ['foo', 'bar']
+    with pytest.raises(ValueError):
+        data['keywords'] = 'foo'
 
 
 def test_file_is_jpeg_detects_invalid_file():

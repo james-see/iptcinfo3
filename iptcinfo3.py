@@ -64,13 +64,6 @@ def smart_open(path, *args, **kwargs):
         fh.close()
 
 
-def push(diction, key, value):
-    if key in diction and hasattr(diction[key], 'append'):
-        diction[key].append(value)
-    else:
-        diction[key] = value
-
-
 def duck_typed(obj, prefs):
     if isinstance(prefs, str):
         prefs = [prefs]
@@ -87,7 +80,7 @@ def file_is_jpeg(fh):
     Will reset the file position back to 0 after it's done in either case.
     """
     fh.seek(0)
-    if debugMode:
+    if debugMode:  # pragma: no cover
         logger.info("Opening 16 bytes of file: %r", hex_dump(fh.read(16)))
         fh.seek(0)
 
@@ -108,7 +101,7 @@ def file_is_jpeg(fh):
         return ered
 
 
-def hex_dump(dump):
+def hex_dump(dump):  # pragma: no cover
     """Very helpful when debugging."""
     if not debugMode:
         return
@@ -127,7 +120,7 @@ def hex_dump(dump):
     return ''.join(res)
 
 
-def jpegDebugScan(filename):
+def jpegDebugScan(filename):  # pragma: no cover
     """Also very helpful when debugging."""
     assert isinstance(filename, str) and os.path.isfile(filename)
     with open(filename, 'wb') as fh:
@@ -238,15 +231,14 @@ c_datasets = {
     219: 'custom20',
 }
 
-c_datasets_r = dict([(v, k) for k, v in c_datasets.items()])
+c_datasets_r = {v: k for k, v in c_datasets.items()}
 
 
 class IPTCData(dict):
     """Dict with int/string keys from c_listdatanames"""
     def __init__(self, diction={}, *args, **kwds):
-        dict.__init__(self, *args, **kwds)  # FIXME super()
-        self.update(dict((self.keyAsInt(k), v)
-                         for k, v in list(diction.items())))
+        super().__init__(self, *args, **kwds)
+        self.update({self.keyAsInt(k): v for k, v in diction.items()})
 
     c_cust_pre = 'nonstandard_'
 
@@ -273,35 +265,17 @@ class IPTCData(dict):
             raise KeyError("Key %s is not in %s!" % (key, list(c_datasets.keys())))
 
     def __getitem__(self, name):
-        return dict.get(self, self.keyAsInt(name), None)
+        return self.get(self.keyAsInt(name), None)
 
     def __setitem__(self, name, value):
         key = self.keyAsInt(name)
-        if key in self and isinstance(dict.__getitem__(self, key), (tuple, list)):
+        if key in self and isinstance(super().__getitem__(key), (tuple, list)):
             if isinstance(value, (tuple, list)):
                 dict.__setitem__(self, key, value)
             else:
-                raise ValueError("For %s only lists acceptable!" % name)
+                raise ValueError("%s must be iterable" % name)
         else:
-            dict.__setitem__(self, self.keyAsInt(name), value)
-
-
-def _getSetSomeList(name):
-    def getList(self):
-        """Returns the list of %s.""" % name
-        return self._data[name]
-
-    def setList(self, value):
-        """Sets the list of %s.""" % name
-        if isinstance(value, (list, tuple)):
-            self._data[name] = list(value)
-        elif isinstance(value, str):
-            self._data[name] = [value]
-            logger.warn('Warning: IPTCInfo.%s is a list!', name)
-        else:
-            raise ValueError('IPTCInfo.%s is a list!' % name)
-
-    return (getList, setList)
+            dict.__setitem__(self, key, value)
 
 
 class IPTCInfo:
@@ -558,6 +532,7 @@ class IPTCInfo:
             self.error = "JpegScan: invalid start of file"
             logger.error(self.error)
             return None
+
         # Scan for the APP13 marker which will contain our IPTC info (I hope).
         while True:
             err = None
@@ -657,7 +632,7 @@ class IPTCInfo:
                  110: 'iso8859_4', 111: 'iso8859_5', 125: 'iso8859_7',
                  127: 'iso8859_6', 138: 'iso8859_8',
                  196: 'utf_8'}
-    c_charset_r = dict([(v, k) for k, v in list(c_charset.items())])
+    c_charset_r = {v: k for k, v in c_charset.items()}
 
     def blindScan(self, fh, MAX=8192):
         """Scans blindly to first IIM Record 2 tag in the file. This
@@ -666,7 +641,6 @@ class IPTCInfo:
         8k of data. (This limit may need to be changed or eliminated
         depending on how other programs choose to store IIM.)"""
 
-        assert duck_typed(fh, 'read')
         offset = 0
         # keep within first 8192 bytes
         # NOTE: this may need to change
@@ -695,7 +669,8 @@ class IPTCInfo:
                             cs = None
                         if cs in self.c_charset:
                             self.inp_charset = self.c_charset[cs]
-                        logger.info("BlindScan: found character set '%s' at offset %d", self.inp_charset, offset)
+                        logger.info("BlindScan: found character set '%s' at offset %d",
+                                    self.inp_charset, offset)
                     except EOFException:
                         pass
 
@@ -707,6 +682,7 @@ class IPTCInfo:
                     except EOFException:
                         return None
                     return offset
+
                 else:
                     # didn't find it. back up 2 to make up for
                     # those reads above.
