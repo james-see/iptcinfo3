@@ -1,6 +1,14 @@
 import os
 
-from iptcinfo3 import IPTCInfo
+from iptcinfo3 import file_is_jpeg, IPTCInfo
+
+
+def test_file_is_jpeg_detects_invalid_file():
+    with open('fixtures/Lenna.jpg', 'rb') as fh:
+        assert file_is_jpeg(fh)
+
+    with open('setup.cfg', 'rb') as fh:
+        assert not file_is_jpeg(fh)
 
 
 def test_getitem_can_read_info():

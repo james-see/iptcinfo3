@@ -80,6 +80,34 @@ def duck_typed(obj, prefs):
     return True
 
 
+def file_is_jpeg(fh):
+    """
+    Checks to see if this file is a Jpeg/JFIF or not.
+
+    Will reset the file position back to 0 after it's done in either case.
+    """
+    fh.seek(0)
+    if debugMode:
+        logger.info("Opening 16 bytes of file: %r", hex_dump(fh.read(16)))
+        fh.seek(0)
+
+    ered = False
+    try:
+        (ff, soi) = fh.read(2)
+        if not (ff == 0xff and soi == 0xd8):
+            ered = False
+        else:
+            # now check for APP0 marker. I'll assume that anything with a
+            # SOI followed by APP0 is "close enough" for our purposes.
+            # (We're not dinking with image data, so anything following
+            # the Jpeg tagging system should work.)
+            (ff, app0) = fh.read(2)
+            ered = ff == 0xff
+    finally:
+        fh.seek(0)
+        return ered
+
+
 def hex_dump(dump):
     """Very helpful when debugging."""
     if not debugMode:
@@ -352,7 +380,7 @@ class IPTCInfo:
         fh = self._getfh()
         assert fh
         fh.seek(0, 0)
-        if not self.fileIsJpeg(fh):
+        if not file_is_jpeg(fh):
             logger.error("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
             return None
 
@@ -433,7 +461,7 @@ class IPTCInfo:
 
         fh = self._getfh()
         fh.seek(0, 0)
-        if not self.fileIsJpeg(fh):
+        if not file_is_jpeg(fh):
             self._closefh(fh)
             raise ValueError('Source file is not a valid JPEG')
 
@@ -494,7 +522,6 @@ class IPTCInfo:
         """
         Seeks length bytes from the current position and checks the result
         """
-        assert duck_typed(fh, ['seek', 'tell'])  # duck typing
         pos = fh.tell()
         fh.seek(length, 1)
         if fh.tell() - pos != length:
@@ -504,39 +531,12 @@ class IPTCInfo:
         """Scans to first IIM Record 2 tag in the file. The will either
         use smart scanning for Jpegs or blind scanning for other file
         types."""
-        if self.fileIsJpeg(fh):
+        if file_is_jpeg(fh):
             logger.info("File is Jpeg, proceeding with JpegScan")
             return self.jpegScan(fh)
         else:
             logger.warn("File not a JPEG, trying blindScan")
             return self.blindScan(fh)
-
-    def fileIsJpeg(self, fh):
-        """Checks to see if this file is a Jpeg/JFIF or not. Will reset
-        the file position back to 0 after it's done in either case."""
-        fh.seek(0, 0)
-        if debugMode:
-            logger.info("Opening 16 bytes of file: %r", hex_dump(fh.read(16)))
-            fh.seek(0, 0)
-
-        ered = False
-        try:
-            (ff, soi) = fh.read(2)
-            if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
-                ered = False
-            else:
-                # now check for APP0 marker. I'll assume that anything with a
-                # SOI followed by APP0 is "close enough" for our purposes.
-                # (We're not dinking with image data, so anything following
-                # the Jpeg tagging system should work.)
-                (ff, app0) = fh.read(2)
-                if not (ord3(ff) == 0xff):
-                    ered = False
-                else:
-                    ered = True
-        finally:
-            fh.seek(0, 0)
-            return ered
 
     c_marker_err = {0: "Marker scan failed",
                     0xd9:  "Marker scan hit end of image marker",
