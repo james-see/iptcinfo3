@@ -246,8 +246,8 @@ class IPTCData(dict):
     def keyAsInt(cls, key):
         if isinstance(key, int):
             return key
-        elif key in c_datasets_r:
-            return c_datasets_r[key]
+        elif isinstance(key, str) and key.lower() in c_datasets_r:
+            return c_datasets_r[key.lower()]
         elif (key.startswith(cls.c_cust_pre) and key[len(cls.c_cust_pre):].isdigit()):
             return int(key[len(cls.c_cust_pre):])
         else:
@@ -471,7 +471,6 @@ class IPTCInfo:
         return len(self._data)
 
     def __getitem__(self, key):
-        # TODO case-insensitive like http headers
         return self._data[key]
 
     def __setitem__(self, key, value):
@@ -986,7 +985,7 @@ class IPTCInfo:
         return b''.join(out)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     logging.basicConfig(level=logging.DEBUG)
     if len(sys.argv) > 1:
         info = IPTCInfo(sys.argv[1])

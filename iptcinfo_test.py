@@ -22,6 +22,7 @@ def test_IPTCData():
     data = IPTCData({105: 'Audiobook Narrator Really Going For Broke With Cajun Accent'})
     assert data['headline'].startswith('Audiobook')
     assert data[105].startswith('Audiobook')
+    assert data['Headline'].startswith('Audiobook')
 
     data['keywords'] = ['foo']
     data['keywords'] = ['foo', 'bar']
@@ -47,7 +48,7 @@ def test_getitem_can_read_info():
 
 
 def test_save_as_saves_as_new_file_with_info():
-    if os.path.isfile('fixtures/deleteme.jpg'):
+    if os.path.isfile('fixtures/deleteme.jpg'):  # pragma: no cover
         os.unlink('fixtures/deleteme.jpg')
 
     info = IPTCInfo('fixtures/Lenna.jpg')
@@ -65,22 +66,3 @@ def test_save_as_saves_as_new_file_with_info():
     assert start == start2
     assert end == end2
     assert adobe == adobe2
-
-    # # Create object for file that may or may not have IPTC data.
-    # info = IPTCInfo(fn, force=True)
-    #
-    # # Add/change an attribute
-    # info.data['caption/abstract'] = 'árvíztűrő tükörfúrógép'
-    # info.data['supplemental category'] = ['portrait']
-    # info.data[123] = '123'
-    # info.data['nonstandard_123'] = 'n123'
-    #
-    # print((info.data))
-    #
-    # # Save new info to file
-    # ##### See disclaimer in 'SAVING FILES' section #####
-    # info.save()
-    # info.saveAs(fn2)
-    #
-    # #re-read IPTC info
-    # print((IPTCInfo(fn2)))
