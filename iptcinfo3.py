@@ -37,15 +37,9 @@ logger = logging.getLogger('iptcinfo')
 LOGDBG = logging.getLogger('iptcinfo.debug')
 
 
-class String(str):
-    def __iadd__(self, other):
-        assert isinstance(other, str)
-        super(type(self), self).__iadd__(other)
-
-
 class EOFException(Exception):
     def __init__(self, *args):
-        Exception.__init__(self)
+        super().__init__(self)
         self._str = '\n'.join(args)
 
     def __str__(self):
@@ -100,9 +94,38 @@ def hex_dump(dump):
         if isinstance(row, list):
             row = b''.join(row)
         res.append(
-            ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') % \
+            ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') %
             tuple(list(map(ord3, list(row))) + [''.join(map(P, row))]))
     return ''.join(res)
+
+
+def jpegDebugScan(filename):
+    """Also very helpful when debugging."""
+    assert isinstance(filename, str) and os.path.isfile(filename)
+    with open(filename, 'wb') as fh:
+
+        # Skip past start of file marker
+        (ff, soi) = fh.read(2)
+        if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
+            logger.error("JpegScan: invalid start of file")
+        else:
+            # scan to 0xDA (start of scan), dumping the markers we see between
+            # here and there.
+            while True:
+                marker = self.jpegNextMarker(fh)
+                if ord3(marker) == 0xda:
+                    break
+
+                if ord3(marker) == 0:
+                    logger.warn("Marker scan failed")
+                    break
+                elif ord3(marker) == 0xd9:
+                    logger.debug("Marker scan hit end of image marker")
+                    break
+
+                if not self.jpegSkipVariable(fh):
+                    logger.warn("JpegSkipVariable failed")
+                    return None
 
 
 sys_enc = sys.getfilesystemencoding()
@@ -459,12 +482,12 @@ class IPTCInfo:
 
     def readExactly(self, fh, length):
         """
-        Reads exactly length bytes and throws an exception if EOF is hit before.
+        Reads exactly `length` bytes and throws an exception if EOF is hit.
         """
-        assert duck_typed(fh, 'read')  # duck typing
         buf = fh.read(length)
         if buf is None or len(buf) < length:
             raise EOFException('readExactly: %s' % str(fh))
+
         return buf
 
     def seekExactly(self, fh, length):
@@ -512,7 +535,6 @@ class IPTCInfo:
                 else:
                     ered = True
         finally:
-            # reset to beginning of file
             fh.seek(0, 0)
             return ered
 
@@ -520,7 +542,7 @@ class IPTCInfo:
                     0xd9:  "Marker scan hit end of image marker",
                     0xda: "Marker scan hit start of image data"}
 
-    def jpegScan(self, fh):  # OK
+    def jpegScan(self, fh):
         """Assuming the file is a Jpeg (see above), this will scan through
         the markers looking for the APP13 marker, where IPTC/IIM data
         should be found. While this isn't a formally defined standard, all
@@ -537,7 +559,7 @@ class IPTCInfo:
             logger.error(self.error)
             return None
         # Scan for the APP13 marker which will contain our IPTC info (I hope).
-        while 1:
+        while True:
             err = None
             marker = self.jpegNextMarker(fh)
             if ord3(marker) == 0xed:
@@ -551,13 +573,16 @@ class IPTCInfo:
                 logger.warn(err)
                 return None
 
-        # If were's here, we must have found the right marker. Now
-        # blindScan through the data.
+        # If were's here, we must have found the right marker.
+        # Now blindScan through the data.
         return self.blindScan(fh, MAX=self.jpegGetVariableLength(fh))
 
-    def jpegNextMarker(self, fh):  # OK
+    def jpegNextMarker(self, fh):
         """Scans to the start of the next valid-looking marker. Return
-        value is the marker id."""
+        value is the marker id.
+
+        TODO use .read instead of .readExactly
+        """
 
         # Find 0xff byte. We should already be on it.
         try:
@@ -572,7 +597,7 @@ class IPTCInfo:
             except EOFException:
                 return None
         # Now skip any extra 0xffs, which are valid padding.
-        while 1:
+        while True:
             try:
                 byte = self.readExactly(fh, 1)
             except EOFException:
@@ -584,7 +609,7 @@ class IPTCInfo:
         logger.debug("JpegNextMarker: at marker %02X (%d)", ord3(byte), ord3(byte))
         return byte
 
-    def jpegGetVariableLength(self, fh):  # OK
+    def jpegGetVariableLength(self, fh):
         """Gets length of current variable-length section. File position
         at start must be on the marker itself, e.g. immediately after call
         to JPEGNextMarker. File position is updated to just past the
@@ -601,7 +626,7 @@ class IPTCInfo:
             return 0
         return length - 2
 
-    def jpegSkipVariable(self, fh, rSave=None):  # OK
+    def jpegSkipVariable(self, fh, rSave=None):
         """Skips variable-length section of Jpeg block. Should always be
         called between calls to JpegNextMarker to ensure JpegNextMarker is
         at the start of data it can properly parse."""
@@ -634,7 +659,7 @@ class IPTCInfo:
                  196: 'utf_8'}
     c_charset_r = dict([(v, k) for k, v in list(c_charset.items())])
 
-    def blindScan(self, fh, MAX=8192):  # OK
+    def blindScan(self, fh, MAX=8192):
         """Scans blindly to first IIM Record 2 tag in the file. This
         method may or may not work on any arbitrary file type, but it
         doesn't hurt to check. We expect to see this tag within the first
@@ -695,13 +720,13 @@ class IPTCInfo:
 
         return False
 
-    def collectIIMInfo(self, fh):  # OK
+    def collectIIMInfo(self, fh):
         """Assuming file is seeked to start of IIM data (using above),
         this reads all the data into our object's hashes"""
         # NOTE: file should already be at the start of the first
         # IPTC code: record 2, dataset 0.
         assert duck_typed(fh, 'read')
-        while 1:
+        while True:
             try:
                 header = self.readExactly(fh, 5)
             except EOFException:
@@ -741,7 +766,10 @@ class IPTCInfo:
         """Collects all pieces of the file except for the IPTC info that
         we'll replace when saving. Returns the stuff before the info,
         stuff after, and the contents of the Adobe Resource Block that the
-        IPTC data goes in. Returns None if a file parsing error occured."""
+        IPTC data goes in.
+
+        Returns None if a file parsing error occured.
+        """
 
         assert duck_typed(fh, ['seek', 'read'])
         adobeParts = b''
@@ -788,7 +816,7 @@ class IPTCInfo:
         # Now scan through all markers in file until we hit image data or
         # IPTC stuff.
         end = []
-        while 1:
+        while True:
             marker = self.jpegNextMarker(fh)
             if marker is None or ord3(marker) == 0:
                 self.error = "Marker scan failed"
@@ -829,10 +857,11 @@ class IPTCInfo:
                 start.append(partdata)
 
         # Append rest of file to end
-        while 1:
+        while True:
             buff = fh.read(8192)
             if buff is None or len(buff) == 0:
                 break
+
             end.append(buff)
 
         return (b''.join(start), b''.join(end), adobeParts)
@@ -979,38 +1008,6 @@ class IPTCInfo:
         out.append(resourceBlock)
 
         return b''.join(out)
-
-    def jpegDebugScan(self, filename):
-        """Also very helpful when debugging."""
-        assert isinstance(filename, str) and os.path.isfile(filename)
-        fh = file(filename, 'wb')
-        if not fh:
-            raise Exception("Can't open %s" % filename)
-
-        # Skip past start of file marker
-        (ff, soi) = fh.read(2)
-        if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
-            logger.error("JpegScan: invalid start of file")
-        else:
-            # scan to 0xDA (start of scan), dumping the markers we see between
-            # here and there.
-            while 1:
-                marker = self.jpegNextMarker(fh)
-                if ord3(marker) == 0xda:
-                    break
-
-                if ord3(marker) == 0:
-                    logger.warn("Marker scan failed")
-                    break
-                elif ord3(marker) == 0xd9:
-                    logger.debug("Marker scan hit end of image marker")
-                    break
-
-                if not self.jpegSkipVariable(fh):
-                    logger.warn("JpegSkipVariable failed")
-                    return None
-
-        self._closefh(fh)
 
 
 if __name__ == '__main__':
