@@ -170,6 +170,24 @@ def jpegDebugScan(filename):  # pragma: no cover
                     return None
 
 
+def jpeg_get_variable_length(fh):
+    """Gets length of current variable-length section. File position
+    at start must be on the marker itself, e.g. immediately after call
+    to JPEGNextMarker. File position is updated to just past the
+    length field."""
+    try:
+        length = unpack('!H', read_exactly(fh, 2))[0]
+    except EOFException:
+        return 0
+    logger.debug('JPEG variable length: %d', length)
+
+    # Length includes itself, so must be at least 2
+    if length < 2:
+        logger.warn("jpeg_get_variable_length: erroneous JPEG marker length")
+        return 0
+    return length - 2
+
+
 sys_enc = sys.getfilesystemencoding()
 
 
@@ -551,7 +569,7 @@ class IPTCInfo:
 
         # If were's here, we must have found the right marker.
         # Now blindScan through the data.
-        return self.blindScan(fh, MAX=self.jpegGetVariableLength(fh))
+        return self.blindScan(fh, MAX=jpeg_get_variable_length(fh))
 
     def jpegNextMarker(self, fh):
         """Scans to the start of the next valid-looking marker. Return
@@ -585,30 +603,13 @@ class IPTCInfo:
         logger.debug("JpegNextMarker: at marker %02X (%d)", ord3(byte), ord3(byte))
         return byte
 
-    def jpegGetVariableLength(self, fh):
-        """Gets length of current variable-length section. File position
-        at start must be on the marker itself, e.g. immediately after call
-        to JPEGNextMarker. File position is updated to just past the
-        length field."""
-        try:
-            length = unpack('!H', read_exactly(fh, 2))[0]
-        except EOFException:
-            return 0
-        logger.debug('JPEG variable length: %d', length)
-
-        # Length includes itself, so must be at least 2
-        if length < 2:
-            logger.warn("JPEGGetVariableLength: erroneous JPEG marker length")
-            return 0
-        return length - 2
-
     def jpegSkipVariable(self, fh, rSave=None):
         """Skips variable-length section of Jpeg block. Should always be
         called between calls to JpegNextMarker to ensure JpegNextMarker is
         at the start of data it can properly parse."""
 
         # Get the marker parameter length count
-        length = self.jpegGetVariableLength(fh)
+        length = jpeg_get_variable_length(fh)
         if length == 0:
             return None
 
@@ -662,7 +663,7 @@ class IPTCInfo:
                 if record == 1 and dataset == 90:
                     # found character set's record!
                     try:
-                        temp = read_exactly(fh, self.jpegGetVariableLength(fh))
+                        temp = read_exactly(fh, jpeg_get_variable_length(fh))
                         try:
                             cs = unpack('!H', temp)[0]
                         except:
