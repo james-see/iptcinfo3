@@ -35,6 +35,12 @@ def test_IPTCData():
     with pytest.raises(ValueError):
         data['keywords'] = 'foo'
 
+    with pytest.raises(KeyError):
+        IPTCData({'yobby': 'yoshi'})
+
+    data = IPTCData({'nonstandard_69': 'sanic'})
+    assert data[69] == 'sanic'
+
 
 def test_file_is_jpeg_detects_invalid_file():
     with open('fixtures/Lenna.jpg', 'rb') as fh:

@@ -337,20 +337,21 @@ class IPTCData(dict):
     """Dict with int/string keys from c_listdatanames"""
     def __init__(self, diction={}, *args, **kwds):
         super().__init__(self, *args, **kwds)
-        self.update({self.keyAsInt(k): v for k, v in diction.items()})
+        self.update({self._key_as_int(k): v for k, v in diction.items()})
 
     c_cust_pre = 'nonstandard_'
 
     @classmethod
-    def keyAsInt(cls, key):
+    def _key_as_int(cls, key):
         if isinstance(key, int):
             return key
         elif isinstance(key, str) and key.lower() in c_datasets_r:
             return c_datasets_r[key.lower()]
-        elif (key.startswith(cls.c_cust_pre) and key[len(cls.c_cust_pre):].isdigit()):
+        elif key.startswith(cls.c_cust_pre) and key[len(cls.c_cust_pre):].isdigit():
+            # example: nonstandard_69 -> 69
             return int(key[len(cls.c_cust_pre):])
         else:
-            raise KeyError("Key %s is not in %s!" % (key, list(c_datasets_r.keys())))
+            raise KeyError('Key %s is not in %s!' % (key, c_datasets_r.keys()))
 
     @classmethod
     def keyAsStr(cls, key):
@@ -364,10 +365,10 @@ class IPTCData(dict):
             raise KeyError("Key %s is not in %s!" % (key, list(c_datasets.keys())))
 
     def __getitem__(self, name):
-        return self.get(self.keyAsInt(name), None)
+        return self.get(self._key_as_int(name), None)
 
     def __setitem__(self, name, value):
-        key = self.keyAsInt(name)
+        key = self._key_as_int(name)
         if key in self and isinstance(super().__getitem__(key), (tuple, list)):
             if isinstance(value, (tuple, list)):
                 dict.__setitem__(self, key, value)
