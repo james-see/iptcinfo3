@@ -165,7 +165,7 @@ def jpegDebugScan(filename):  # pragma: no cover
                     logger.debug("Marker scan hit end of image marker")
                     break
 
-                if not self.jpegSkipVariable(fh):
+                if not jpeg_skip_variable(fh):
                     logger.warn("JpegSkipVariable failed")
                     return None
 
@@ -219,6 +219,34 @@ def jpeg_next_marker(fh):
     # byte should now contain the marker id.
     logger.debug("jpeg_next_marker: at marker %02X (%d)", ord3(byte), ord3(byte))
     return byte
+
+
+def jpeg_skip_variable(fh, rSave=None):
+    """Skips variable-length section of Jpeg block. Should always be
+    called between calls to JpegNextMarker to ensure JpegNextMarker is
+    at the start of data it can properly parse."""
+
+    # Get the marker parameter length count
+    length = jpeg_get_variable_length(fh)
+    if length == 0:
+        return None
+
+    # Skip remaining bytes
+    if rSave is not None or debugMode > 0:
+        try:
+            temp = read_exactly(fh, length)
+        except EOFException:
+            logger.error("jpeg_skip_variable: read failed while skipping var data")
+            return None
+    else:
+        # Just seek
+        try:
+            seek_exactly(fh, length)
+        except EOFException:
+            logger.error("jpeg_skip_variable: read failed while skipping var data")
+            return None
+
+    return (rSave is not None and [temp] or [True])[0]
 
 
 sys_enc = sys.getfilesystemencoding()
@@ -593,7 +621,7 @@ class IPTCInfo:
                 break  # 237
 
             err = self.c_marker_err.get(ord3(marker), None)
-            if err is None and self.jpegSkipVariable(fh) == 0:
+            if err is None and jpeg_skip_variable(fh) == 0:
                 err = "JpegSkipVariable failed"
             if err is not None:
                 self.error = err
@@ -603,33 +631,6 @@ class IPTCInfo:
         # If were's here, we must have found the right marker.
         # Now blindScan through the data.
         return self.blindScan(fh, MAX=jpeg_get_variable_length(fh))
-
-    def jpegSkipVariable(self, fh, rSave=None):
-        """Skips variable-length section of Jpeg block. Should always be
-        called between calls to JpegNextMarker to ensure JpegNextMarker is
-        at the start of data it can properly parse."""
-
-        # Get the marker parameter length count
-        length = jpeg_get_variable_length(fh)
-        if length == 0:
-            return None
-
-        # Skip remaining bytes
-        if rSave is not None or debugMode > 0:
-            try:
-                temp = read_exactly(fh, length)
-            except EOFException:
-                logger.error("JpegSkipVariable: read failed while skipping var data")
-                return None
-        else:
-            # Just seek
-            try:
-                seek_exactly(fh, length)
-            except EOFException:
-                logger.error("JpegSkipVariable: read failed while skipping var data")
-                return None
-
-        return (rSave is not None and [temp] or [True])[0]
 
     c_charset = {100: 'iso8859_1', 101: 'iso8859_2', 109: 'iso8859_3',
                  110: 'iso8859_4', 111: 'iso8859_5', 125: 'iso8859_7',
@@ -770,7 +771,7 @@ class IPTCInfo:
         # EXIF.
         marker = jpeg_next_marker(fh)
         app0data = b''
-        app0data = self.jpegSkipVariable(fh, app0data)
+        app0data = jpeg_skip_variable(fh, app0data)
         if app0data is None:
             self.error = 'jpegSkipVariable failed'
             logger.error(self.error)
@@ -812,7 +813,7 @@ class IPTCInfo:
                 end.append(pack("BB", 0xff, ord3(marker)))
                 break
             partdata = b''
-            partdata = self.jpegSkipVariable(fh, partdata)
+            partdata = jpeg_skip_variable(fh, partdata)
             if not partdata:
                 self.error = "JpegSkipVariable failed"
                 logger.error(self.error)
