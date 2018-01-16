@@ -112,6 +112,16 @@ def read_exactly(fh, length):
     return buf
 
 
+def seek_exactly(fh, length):
+    """
+    Seeks length bytes from the current position and checks the result
+    """
+    pos = fh.tell()
+    fh.seek(length, 1)
+    if fh.tell() - pos != length:
+        raise EOFException('seek_exactly')
+
+
 def hex_dump(dump):  # pragma: no cover
     """Very helpful when debugging."""
     if not debugMode:
@@ -492,15 +502,6 @@ class IPTCInfo:
                 str(dict((self._data.keyAsStr(k), v)
                          for k, v in list(self._data.items())))))
 
-    def seekExactly(self, fh, length):
-        """
-        Seeks length bytes from the current position and checks the result
-        """
-        pos = fh.tell()
-        fh.seek(length, 1)
-        if fh.tell() - pos != length:
-            raise EOFException()
-
     def scanToFirstIMMTag(self, fh):
         """Scans to first IIM Record 2 tag in the file. The will either
         use smart scanning for Jpegs or blind scanning for other file
@@ -621,7 +622,7 @@ class IPTCInfo:
         else:
             # Just seek
             try:
-                self.seekExactly(fh, length)
+                seek_exactly(fh, length)
             except EOFException:
                 logger.error("JpegSkipVariable: read failed while skipping var data")
                 return None
@@ -678,7 +679,7 @@ class IPTCInfo:
                     # found it. seek to start of this tag and return.
                     logger.debug("BlindScan: found IIM start at offset %d", offset)
                     try:  # seek rel to current position
-                        self.seekExactly(fh, -3)
+                        seek_exactly(fh, -3)
                     except EOFException:
                         return None
                     return offset
@@ -687,7 +688,7 @@ class IPTCInfo:
                     # didn't find it. back up 2 to make up for
                     # those reads above.
                     try:  # seek rel to current position
-                        self.seekExactly(fh, -2)
+                        seek_exactly(fh, -2)
                     except EOFException:
                         return None
 
