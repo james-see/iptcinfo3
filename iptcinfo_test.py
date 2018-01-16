@@ -4,6 +4,7 @@ import pytest
 
 from iptcinfo3 import (
     EOFException,
+    hex_dump,
     file_is_jpeg,
     IPTCData,
     IPTCInfo,
@@ -16,6 +17,11 @@ def test_EOFException_message():
 
     exp = EOFException('ugh', 'well')
     assert str(exp) == 'ugh\nwell'
+
+
+def test_hex_dump():
+    out = hex_dump(b'ABCDEF')
+    assert out.strip() == '41 42 43 44 45 46                                     | ABCDEF'
 
 
 def test_IPTCData():

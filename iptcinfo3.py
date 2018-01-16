@@ -122,13 +122,12 @@ def seek_exactly(fh, length):
         raise EOFException('seek_exactly')
 
 
-def hex_dump(dump):  # pragma: no cover
-    """Very helpful when debugging."""
-    if not debugMode:
-        return
-
+def hex_dump(dump):
+    """
+    Create an xxd style hex dump from a binary dump.
+    """
     length = len(dump)
-    P = lambda z: ((ord3(z) >= 0x21 and ord3(z) <= 0x7e) and [z] or ['.'])[0]
+    P = lambda z: chr(z) if ord3(z) >= 0x21 and ord3(z) <= 0x7e else '.'  # noqa: E731
     ROWLEN = 18
     res = ['\n']
     for j in range(length // ROWLEN + int(length % ROWLEN > 0)):
@@ -137,11 +136,11 @@ def hex_dump(dump):  # pragma: no cover
             row = b''.join(row)
         res.append(
             ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') %
-            tuple(list(map(ord3, list(row))) + [''.join(map(P, row))]))
+            tuple(list(row) + [''.join(map(P, row))]))
     return ''.join(res)
 
 
-def jpegDebugScan(filename):  # pragma: no cover
+def jpeg_debug_scan(filename):  # pragma: no cover
     """Also very helpful when debugging."""
     assert isinstance(filename, str) and os.path.isfile(filename)
     with open(filename, 'wb') as fh:
