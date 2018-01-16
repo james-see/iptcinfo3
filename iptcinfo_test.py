@@ -38,8 +38,13 @@ def test_IPTCData():
     with pytest.raises(KeyError):
         IPTCData({'yobby': 'yoshi'})
 
+    with pytest.raises(KeyError):
+        data['yobby'] = 'yoshi'
+
     data = IPTCData({'nonstandard_69': 'sanic'})
     assert data[69] == 'sanic'
+
+    assert str(data) == "{'nonstandard_69': 'sanic'}"
 
 
 def test_file_is_jpeg_detects_invalid_file():

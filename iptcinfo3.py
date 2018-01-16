@@ -354,7 +354,7 @@ class IPTCData(dict):
             raise KeyError('Key %s is not in %s!' % (key, c_datasets_r.keys()))
 
     @classmethod
-    def keyAsStr(cls, key):
+    def _key_as_str(cls, key):
         if isinstance(key, str) and key in c_datasets_r:
             return key
         elif key in c_datasets:
@@ -376,6 +376,10 @@ class IPTCData(dict):
                 raise ValueError("%s must be iterable" % name)
         else:
             dict.__setitem__(self, key, value)
+
+    def __str__(self):
+        return str({self._key_as_str(k): v
+                    for k, v in self.items()})
 
 
 class IPTCInfo:
@@ -577,9 +581,7 @@ class IPTCInfo:
         self._data[key] = value
 
     def __str__(self):
-        return ('charset: %s\n%s' % (self.inp_charset,
-                str(dict((self._data.keyAsStr(k), v)
-                         for k, v in list(self._data.items())))))
+        return 'charset:t%s\ndata:\t%s' % (self.inp_charset, self._data)
 
     def scanToFirstIMMTag(self, fh):
         """Scans to first IIM Record 2 tag in the file. The will either
