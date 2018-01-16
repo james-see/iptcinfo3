@@ -154,7 +154,7 @@ def jpegDebugScan(filename):  # pragma: no cover
             # scan to 0xDA (start of scan), dumping the markers we see between
             # here and there.
             while True:
-                marker = self.jpegNextMarker(fh)
+                marker = jpeg_next_marker(fh)
                 if ord3(marker) == 0xda:
                     break
 
@@ -186,6 +186,39 @@ def jpeg_get_variable_length(fh):
         logger.warn("jpeg_get_variable_length: erroneous JPEG marker length")
         return 0
     return length - 2
+
+
+def jpeg_next_marker(fh):
+    """Scans to the start of the next valid-looking marker. Return
+    value is the marker id.
+
+    TODO use .read instead of .readExactly
+    """
+
+    # Find 0xff byte. We should already be on it.
+    try:
+        byte = read_exactly(fh, 1)
+    except EOFException:
+        return None
+
+    while ord3(byte) != 0xff:
+        logger.warn("jpeg_next_marker: warning: bogus stuff in Jpeg file")
+        try:
+            byte = read_exactly(fh, 1)
+        except EOFException:
+            return None
+    # Now skip any extra 0xffs, which are valid padding.
+    while True:
+        try:
+            byte = read_exactly(fh, 1)
+        except EOFException:
+            return None
+        if ord3(byte) != 0xff:
+            break
+
+    # byte should now contain the marker id.
+    logger.debug("jpeg_next_marker: at marker %02X (%d)", ord3(byte), ord3(byte))
+    return byte
 
 
 sys_enc = sys.getfilesystemencoding()
@@ -555,7 +588,7 @@ class IPTCInfo:
         # Scan for the APP13 marker which will contain our IPTC info (I hope).
         while True:
             err = None
-            marker = self.jpegNextMarker(fh)
+            marker = jpeg_next_marker(fh)
             if ord3(marker) == 0xed:
                 break  # 237
 
@@ -570,38 +603,6 @@ class IPTCInfo:
         # If were's here, we must have found the right marker.
         # Now blindScan through the data.
         return self.blindScan(fh, MAX=jpeg_get_variable_length(fh))
-
-    def jpegNextMarker(self, fh):
-        """Scans to the start of the next valid-looking marker. Return
-        value is the marker id.
-
-        TODO use .read instead of .readExactly
-        """
-
-        # Find 0xff byte. We should already be on it.
-        try:
-            byte = read_exactly(fh, 1)
-        except EOFException:
-            return None
-
-        while ord3(byte) != 0xff:
-            logger.warn("JpegNextMarker: warning: bogus stuff in Jpeg file")
-            try:
-                byte = read_exactly(fh, 1)
-            except EOFException:
-                return None
-        # Now skip any extra 0xffs, which are valid padding.
-        while True:
-            try:
-                byte = read_exactly(fh, 1)
-            except EOFException:
-                return None
-            if ord3(byte) != 0xff:
-                break
-
-        # byte should now contain the marker id.
-        logger.debug("JpegNextMarker: at marker %02X (%d)", ord3(byte), ord3(byte))
-        return byte
 
     def jpegSkipVariable(self, fh, rSave=None):
         """Skips variable-length section of Jpeg block. Should always be
@@ -767,7 +768,7 @@ class IPTCInfo:
 
         # Get first marker in file. This will be APP0 for JFIF or APP1 for
         # EXIF.
-        marker = self.jpegNextMarker(fh)
+        marker = jpeg_next_marker(fh)
         app0data = b''
         app0data = self.jpegSkipVariable(fh, app0data)
         if app0data is None:
@@ -795,7 +796,7 @@ class IPTCInfo:
         # IPTC stuff.
         end = []
         while True:
-            marker = self.jpegNextMarker(fh)
+            marker = jpeg_next_marker(fh)
             if marker is None or ord3(marker) == 0:
                 self.error = "Marker scan failed"
                 logger.error(self.error)
