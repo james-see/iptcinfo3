@@ -101,6 +101,17 @@ def file_is_jpeg(fh):
         return ered
 
 
+def read_exactly(fh, length):
+    """
+    Reads exactly `length` bytes and throws an exception if EOF is hit.
+    """
+    buf = fh.read(length)
+    if buf is None or len(buf) < length:
+        raise EOFException('read_exactly: %s' % str(fh))
+
+    return buf
+
+
 def hex_dump(dump):  # pragma: no cover
     """Very helpful when debugging."""
     if not debugMode:
@@ -481,16 +492,6 @@ class IPTCInfo:
                 str(dict((self._data.keyAsStr(k), v)
                          for k, v in list(self._data.items())))))
 
-    def readExactly(self, fh, length):
-        """
-        Reads exactly `length` bytes and throws an exception if EOF is hit.
-        """
-        buf = fh.read(length)
-        if buf is None or len(buf) < length:
-            raise EOFException('readExactly: %s' % str(fh))
-
-        return buf
-
     def seekExactly(self, fh, length):
         """
         Seeks length bytes from the current position and checks the result
@@ -523,7 +524,7 @@ class IPTCInfo:
         the data in APP13."""
         # Skip past start of file marker
         try:
-            (ff, soi) = self.readExactly(fh, 2)
+            (ff, soi) = read_exactly(fh, 2)
         except EOFException:
             return None
 
@@ -560,20 +561,20 @@ class IPTCInfo:
 
         # Find 0xff byte. We should already be on it.
         try:
-            byte = self.readExactly(fh, 1)
+            byte = read_exactly(fh, 1)
         except EOFException:
             return None
 
         while ord3(byte) != 0xff:
             logger.warn("JpegNextMarker: warning: bogus stuff in Jpeg file")
             try:
-                byte = self.readExactly(fh, 1)
+                byte = read_exactly(fh, 1)
             except EOFException:
                 return None
         # Now skip any extra 0xffs, which are valid padding.
         while True:
             try:
-                byte = self.readExactly(fh, 1)
+                byte = read_exactly(fh, 1)
             except EOFException:
                 return None
             if ord3(byte) != 0xff:
@@ -589,7 +590,7 @@ class IPTCInfo:
         to JPEGNextMarker. File position is updated to just past the
         length field."""
         try:
-            length = unpack('!H', self.readExactly(fh, 2))[0]
+            length = unpack('!H', read_exactly(fh, 2))[0]
         except EOFException:
             return 0
         logger.debug('JPEG variable length: %d', length)
@@ -613,7 +614,7 @@ class IPTCInfo:
         # Skip remaining bytes
         if rSave is not None or debugMode > 0:
             try:
-                temp = self.readExactly(fh, length)
+                temp = read_exactly(fh, length)
             except EOFException:
                 logger.error("JpegSkipVariable: read failed while skipping var data")
                 return None
@@ -648,7 +649,7 @@ class IPTCInfo:
         # start digging
         while offset <= MAX:
             try:
-                temp = self.readExactly(fh, 1)
+                temp = read_exactly(fh, 1)
             except EOFException:
                 logger.warn("BlindScan: hit EOF while scanning")
                 return None
@@ -660,7 +661,7 @@ class IPTCInfo:
                 if record == 1 and dataset == 90:
                     # found character set's record!
                     try:
-                        temp = self.readExactly(fh, self.jpegGetVariableLength(fh))
+                        temp = read_exactly(fh, self.jpegGetVariableLength(fh))
                         try:
                             cs = unpack('!H', temp)[0]
                         except:
@@ -703,7 +704,7 @@ class IPTCInfo:
         assert duck_typed(fh, 'read')
         while True:
             try:
-                header = self.readExactly(fh, 5)
+                header = read_exactly(fh, 5)
             except EOFException:
                 return None
 
