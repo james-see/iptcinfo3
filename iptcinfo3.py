@@ -37,14 +37,8 @@ logger = logging.getLogger('iptcinfo')
 LOGDBG = logging.getLogger('iptcinfo.debug')
 
 
-class EOFException(Exception):
-    def __init__(self, *args):
-        super().__init__(self)
-        self._str = '\n'.join(args)
-
-    def __str__(self):
-        return self._str
-
+# Misc utilities
+################
 
 @contextlib.contextmanager
 def smart_open(path, *args, **kwargs):
@@ -70,8 +64,68 @@ def duck_typed(obj, prefs):
     for pref in prefs:
         if not hasattr(obj, pref):
             return False
+
     return True
 
+
+def ord3(x):
+    return x if isinstance(x, int) else ord(x)
+
+
+def hex_dump(dump):
+    """
+    Create an xxd style hex dump from a binary dump.
+    """
+    length = len(dump)
+    P = lambda z: chr(z) if ord3(z) >= 0x21 and ord3(z) <= 0x7e else '.'  # noqa: E731
+    ROWLEN = 18
+    res = ['\n']
+    for j in range(length // ROWLEN + int(length % ROWLEN > 0)):
+        row = dump[j * ROWLEN:(j + 1) * ROWLEN]
+        if isinstance(row, list):
+            row = b''.join(row)
+        res.append(
+            ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') %
+            tuple(list(row) + [''.join(map(P, row))]))
+    return ''.join(res)
+
+
+# File utilities
+################
+# Should we just use .read and .seek?
+
+class EOFException(Exception):
+    def __init__(self, *args):
+        super().__init__(self)
+        self._str = '\n'.join(args)
+
+    def __str__(self):
+        return self._str
+
+
+def read_exactly(fh, length):
+    """
+    Reads exactly `length` bytes and throws an exception if EOF is hit.
+    """
+    buf = fh.read(length)
+    if buf is None or len(buf) < length:
+        raise EOFException('read_exactly: %s' % str(fh))
+
+    return buf
+
+
+def seek_exactly(fh, length):
+    """
+    Seeks length bytes from the current position and checks the result
+    """
+    pos = fh.tell()
+    fh.seek(length, 1)
+    if fh.tell() - pos != length:
+        raise EOFException('seek_exactly')
+
+
+# JPEG utilities
+################
 
 def file_is_jpeg(fh):
     """
@@ -99,74 +153,6 @@ def file_is_jpeg(fh):
     finally:
         fh.seek(0)
         return ered
-
-
-def read_exactly(fh, length):
-    """
-    Reads exactly `length` bytes and throws an exception if EOF is hit.
-    """
-    buf = fh.read(length)
-    if buf is None or len(buf) < length:
-        raise EOFException('read_exactly: %s' % str(fh))
-
-    return buf
-
-
-def seek_exactly(fh, length):
-    """
-    Seeks length bytes from the current position and checks the result
-    """
-    pos = fh.tell()
-    fh.seek(length, 1)
-    if fh.tell() - pos != length:
-        raise EOFException('seek_exactly')
-
-
-def hex_dump(dump):
-    """
-    Create an xxd style hex dump from a binary dump.
-    """
-    length = len(dump)
-    P = lambda z: chr(z) if ord3(z) >= 0x21 and ord3(z) <= 0x7e else '.'  # noqa: E731
-    ROWLEN = 18
-    res = ['\n']
-    for j in range(length // ROWLEN + int(length % ROWLEN > 0)):
-        row = dump[j * ROWLEN:(j + 1) * ROWLEN]
-        if isinstance(row, list):
-            row = b''.join(row)
-        res.append(
-            ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') %
-            tuple(list(row) + [''.join(map(P, row))]))
-    return ''.join(res)
-
-
-def jpeg_debug_scan(filename):  # pragma: no cover
-    """Also very helpful when debugging."""
-    assert isinstance(filename, str) and os.path.isfile(filename)
-    with open(filename, 'wb') as fh:
-
-        # Skip past start of file marker
-        (ff, soi) = fh.read(2)
-        if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
-            logger.error("JpegScan: invalid start of file")
-        else:
-            # scan to 0xDA (start of scan), dumping the markers we see between
-            # here and there.
-            while True:
-                marker = jpeg_next_marker(fh)
-                if ord3(marker) == 0xda:
-                    break
-
-                if ord3(marker) == 0:
-                    logger.warn("Marker scan failed")
-                    break
-                elif ord3(marker) == 0xd9:
-                    logger.debug("Marker scan hit end of image marker")
-                    break
-
-                if not jpeg_skip_variable(fh):
-                    logger.warn("JpegSkipVariable failed")
-                    return None
 
 
 def jpeg_get_variable_length(fh):
@@ -248,11 +234,33 @@ def jpeg_skip_variable(fh, rSave=None):
     return (rSave is not None and [temp] or [True])[0]
 
 
-sys_enc = sys.getfilesystemencoding()
+def jpeg_debug_scan(filename):  # pragma: no cover
+    """Also very helpful when debugging."""
+    assert isinstance(filename, str) and os.path.isfile(filename)
+    with open(filename, 'wb') as fh:
 
+        # Skip past start of file marker
+        (ff, soi) = fh.read(2)
+        if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
+            logger.error("JpegScan: invalid start of file")
+        else:
+            # scan to 0xDA (start of scan), dumping the markers we see between
+            # here and there.
+            while True:
+                marker = jpeg_next_marker(fh)
+                if ord3(marker) == 0xda:
+                    break
 
-def ord3(x):
-    return x if isinstance(x, int) else ord(x)
+                if ord3(marker) == 0:
+                    logger.warn("Marker scan failed")
+                    break
+                elif ord3(marker) == 0xd9:
+                    logger.debug("Marker scan hit end of image marker")
+                    break
+
+                if not jpeg_skip_variable(fh):
+                    logger.warn("JpegSkipVariable failed")
+                    return None
 
 
 #####################################
@@ -378,8 +386,7 @@ class IPTCData(dict):
             dict.__setitem__(self, key, value)
 
     def __str__(self):
-        return str({self._key_as_str(k): v
-                    for k, v in self.items()})
+        return str({self._key_as_str(k): v for k, v in self.items()})
 
 
 class IPTCInfo:
@@ -874,6 +881,7 @@ class IPTCInfo:
             offset += 1
             if offset >= length:
                 break
+
             string = data[offset:offset + stringlen]
             offset += stringlen
 
