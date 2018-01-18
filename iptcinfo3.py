@@ -417,6 +417,7 @@ class IPTCInfo:
             'keywords': [],
             'contact': [],
         })
+        self._fobj = fobj
         if duck_typed(fobj, 'read'):  # DELETEME
             self._filename = None
             self._fh = fobj
@@ -426,7 +427,7 @@ class IPTCInfo:
         self.inp_charset = inp_charset
         self.out_charset = out_charset or inp_charset
 
-        with smart_open(fobj, 'rb') as fh:
+        with smart_open(self._fobj, 'rb') as fh:
             datafound = self.scanToFirstIMMTag(fh)
             if datafound or force:
                 # Do the real snarfing here
@@ -462,15 +463,13 @@ class IPTCInfo:
 
     def save_as(self, newfile, options=None):
         """Saves Jpeg with IPTC data to a given file name."""
-        fh = self._getfh()
-        assert fh
-        fh.seek(0, 0)
-        if not file_is_jpeg(fh):
-            logger.error("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
-            return None
+        with smart_open(self._fobj, 'rb') as fh:
+            if not file_is_jpeg(fh):
+                logger.error("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
+                return None
 
-        ret = self.jpegCollectFileParts(fh, options)
-        self._closefh(fh)
+            ret = self.jpegCollectFileParts(fh, options)
+
         if ret is None:
             logger.error("collectfileparts failed")
             raise Exception('collectfileparts failed')
@@ -588,7 +587,7 @@ class IPTCInfo:
         self._data[key] = value
 
     def __str__(self):
-        return 'charset:t%s\ndata:\t%s' % (self.inp_charset, self._data)
+        return 'charset:\t%s\ndata:\t%s' % (self.inp_charset, self._data)
 
     def scanToFirstIMMTag(self, fh):
         """Scans to first IIM Record 2 tag in the file. The will either
