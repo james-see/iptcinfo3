@@ -1,3 +1,4 @@
+import random
 import os
 
 import pytest
@@ -83,3 +84,17 @@ def test_save_as_saves_as_new_file_with_info():
     assert start == start2
     assert end == end2
     assert adobe == adobe2
+
+
+def test_save_as_saves_as_new_file_with_new_info():
+    if os.path.isfile('fixtures/deleteme.jpg'):  # pragma: no cover
+        os.unlink('fixtures/deleteme.jpg')
+
+    new_headline = 'test headline %d' % random.randint(0, 100)
+    info = IPTCInfo('fixtures/Lenna.jpg')
+    info['headline'] = new_headline
+    info.save_as('fixtures/deleteme.jpg')
+
+    info2 = IPTCInfo('fixtures/deleteme.jpg')
+
+    assert info2['headline'] == new_headline

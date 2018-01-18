@@ -410,8 +410,7 @@ class IPTCInfo:
 
     error = None
 
-    def __init__(self, fobj, force=False, inp_charset=None, out_charset=None,
-                 *args, **kwds):
+    def __init__(self, fobj, force=False, inp_charset=None, out_charset=None):
         self._data = IPTCData({
             'supplemental category': [],
             'keywords': [],
@@ -475,12 +474,12 @@ class IPTCInfo:
             raise Exception('collectfileparts failed')
 
         (start, end, adobe) = ret
-        LOGDBG.debug('start: %d, end: %d, adobe:%d', *list(map(len, ret)))
+        LOGDBG.debug('start: %d, end: %d, adobe:%d', *map(len, ret))
         hex_dump(start)
         LOGDBG.debug('adobe1: %r', adobe)
         if options is not None and 'discardAdobeParts' in options:
             adobe = None
-        LOGDBG.debug('adobe2: %r', adobe)
+            LOGDBG.debug('adobe2: %r', adobe)
 
         LOGDBG.info('writing...')
         (tmpfd, tmpfn) = tempfile.mkstemp()
@@ -492,6 +491,8 @@ class IPTCInfo:
             return None
 
         LOGDBG.debug('start=%d end=%d', len(start), len(end))
+        LOGDBG.debug('start len=%d dmp=%s', len(start), hex_dump(start))
+        # FIXME `start` contains the old IPTC data, so the next we read, we'll get the wrong data
         tmpfh.write(start)
         # character set
         ch = self.c_charset_r.get(self.out_charset, None)
@@ -502,7 +503,7 @@ class IPTCInfo:
 
         LOGDBG.debug('pos: %d', self._filepos(tmpfh))
         data = self.photoshopIIMBlock(adobe, self.packedIIMData())
-        LOGDBG.debug('data len=%d dmp=%r', len(data), hex_dump(data))
+        LOGDBG.debug('data len=%d dmp=%s', len(data), hex_dump(data))
         tmpfh.write(data)
         LOGDBG.debug('pos: %d', self._filepos(tmpfh))
         tmpfh.write(end)
@@ -676,7 +677,7 @@ class IPTCInfo:
                         temp = read_exactly(fh, jpeg_get_variable_length(fh))
                         try:
                             cs = unpack('!H', temp)[0]
-                        except:
+                        except Exception:  # TODO better exception
                             logger.warn('WARNING: problems with charset recognition (%r)', temp)
                             cs = None
                         if cs in self.c_charset:
@@ -713,7 +714,6 @@ class IPTCInfo:
         this reads all the data into our object's hashes"""
         # NOTE: file should already be at the start of the first
         # IPTC code: record 2, dataset 0.
-        assert duck_typed(fh, 'read')
         while True:
             try:
                 header = read_exactly(fh, 5)
@@ -725,23 +725,21 @@ class IPTCInfo:
             if not (tag == 0x1c and record == 2):
                 return None
 
-            alist = {'tag': tag, 'record': record, 'dataset': dataset,
-                     'length': length}
-            logger.debug('\n'.join('%s\t: %s' % (k, v) for k, v in list(alist.items())))
+            alist = {'tag': tag, 'record': record, 'dataset': dataset, 'length': length}
+            logger.debug('\n'.join('%s\t: %s' % (k, v) for k, v in alist.items()))
             value = fh.read(length)
 
             if self.inp_charset:
                 try:
                     value = str(value, encoding=self.inp_charset, errors='strict')
-                except:
+                except Exception:  # TODO better exception
                     logger.warn('Data "%r" is not in encoding %s!', value, self.inp_charset)
                     value = str(value, encoding=self.inp_charset, errors='replace')
 
             # try to extract first into _listdata (keywords, categories)
             # and, if unsuccessful, into _data. Tags which are not in the
             # current IIM spec (version 4) are currently discarded.
-            if (dataset in self._data
-                    and hasattr(self._data[dataset], 'append')):
+            if dataset in self._data and hasattr(self._data[dataset], 'append'):
                 self._data[dataset].append(value)
             elif dataset != 0:
                 self._data[dataset] = value
@@ -945,15 +943,17 @@ class IPTCInfo:
         # tag - record - dataset - len (short) - 4 (short)
         out.append(pack("!BBBHH", tag, record, 0, 2, 4))
 
-        LOGDBG.debug('out=%r', hex_dump(out))
+        LOGDBG.debug('out=%s', hex_dump(out))
         # Iterate over data sets
-        for dataset, value in list(self._data.items()):
+        for dataset, value in self._data.items():
             if len(value) == 0:
                 continue
+
             if not (isinstance(dataset, int) and dataset in c_datasets):
-                logger.warn("PackedIIMData: illegal dataname '%s' (%d)", dataset, dataset)
+                logger.warn("packedIIMData: illegal dataname '%s' (%d)", dataset, dataset)
                 continue
-            logger.debug('packedIIMData %r -> %r', value, self._enc(value))
+
+            logger.debug('packedIIMData %02X: %r -> %r', dataset, value, self._enc(value))
             value = self._enc(value)
             if not isinstance(value, list):
                 value = bytes(value)
@@ -963,6 +963,7 @@ class IPTCInfo:
                 for v in map(bytes, value):
                     if v is None or len(v) == 0:
                         continue
+
                     out.append(pack("!BBBH", tag, record, dataset, len(v)))
                     out.append(v)
 
