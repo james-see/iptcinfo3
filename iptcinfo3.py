@@ -179,27 +179,21 @@ def jpeg_next_marker(fh):
 
     TODO use .read instead of .readExactly
     """
-
     # Find 0xff byte. We should already be on it.
     try:
         byte = read_exactly(fh, 1)
+        while ord3(byte) != 0xff:
+            logger.warn("jpeg_next_marker warning: bogus stuff in Jpeg file")
+            byte = read_exactly(fh, 1)
+
+        # Now skip any extra 0xffs, which are valid padding.
+        while True:
+            byte = read_exactly(fh, 1)
+            if ord3(byte) != 0xff:
+                break
+
     except EOFException:
         return None
-
-    while ord3(byte) != 0xff:
-        logger.warn("jpeg_next_marker: warning: bogus stuff in Jpeg file")
-        try:
-            byte = read_exactly(fh, 1)
-        except EOFException:
-            return None
-    # Now skip any extra 0xffs, which are valid padding.
-    while True:
-        try:
-            byte = read_exactly(fh, 1)
-        except EOFException:
-            return None
-        if ord3(byte) != 0xff:
-            break
 
     # byte should now contain the marker id.
     logger.debug("jpeg_next_marker: at marker %02X (%d)", ord3(byte), ord3(byte))
@@ -242,7 +236,7 @@ def jpeg_debug_scan(filename):  # pragma: no cover
         # Skip past start of file marker
         (ff, soi) = fh.read(2)
         if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
-            logger.error("JpegScan: invalid start of file")
+            logger.error("jpeg_debug_scan: invalid start of file")
         else:
             # scan to 0xDA (start of scan), dumping the markers we see between
             # here and there.
@@ -254,12 +248,13 @@ def jpeg_debug_scan(filename):  # pragma: no cover
                 if ord3(marker) == 0:
                     logger.warn("Marker scan failed")
                     break
+
                 elif ord3(marker) == 0xd9:
                     logger.debug("Marker scan hit end of image marker")
                     break
 
                 if not jpeg_skip_variable(fh):
-                    logger.warn("JpegSkipVariable failed")
+                    logger.warn("jpeg_skip_variable failed")
                     return None
 
 
@@ -452,14 +447,16 @@ class IPTCInfo:
                 logger.error("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
                 return None
 
-            ret = self.jpegCollectFileParts(fh, options)
+            # XXX bug in jpegCollectFileParts? it's not supposed to return old
+            # meta, but it does. discarding app parts keeps it from doing this
+            jpeg_parts = self.jpegCollectFileParts(fh, discard_app_parts=True)
 
-        if ret is None:
+        if jpeg_parts is None:
             logger.error("collectfileparts failed")
             raise Exception('collectfileparts failed')
 
-        (start, end, adobe) = ret
-        LOGDBG.debug('start: %d, end: %d, adobe: %d', *map(len, ret))
+        (start, end, adobe) = jpeg_parts
+        LOGDBG.debug('start: %d, end: %d, adobe: %d', *map(len, jpeg_parts))
         hex_dump(start)
         LOGDBG.debug('adobe1: %r', adobe)
         if options is not None and 'discardAdobeParts' in options:
@@ -686,7 +683,7 @@ class IPTCInfo:
     # File Saving
     #######################################################################
 
-    def jpegCollectFileParts(self, fh, discardAppParts=False):
+    def jpegCollectFileParts(self, fh, discard_app_parts=False):
         """Collects all pieces of the file except for the IPTC info that
         we'll replace when saving. Returns the stuff before the info,
         stuff after, and the contents of the Adobe Resource Block that the
@@ -694,34 +691,29 @@ class IPTCInfo:
 
         Returns None if a file parsing error occured.
         """
-
-        assert duck_typed(fh, ['seek', 'read'])
         adobeParts = b''
         start = []
-
-        # Start at beginning of file
         fh.seek(0, 0)
         # Skip past start of file marker
         (ff, soi) = fh.read(2)
         if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
-            self.error = "JpegScan: invalid start of file"
+            self.error = "jpegCollectFileParts: invalid start of file"
             logger.error(self.error)
             return None
 
         # Begin building start of file
-        start.append(pack("BB", 0xff, 0xd8))
+        start.append(pack('BB', 0xff, 0xd8))  # pack('BB', ff, soi)
 
-        # Get first marker in file. This will be APP0 for JFIF or APP1 for
-        # EXIF.
+        # Get first marker in file. This will be APP0 for JFIF or APP1 for EXIF
         marker = jpeg_next_marker(fh)
         app0data = b''
         app0data = jpeg_skip_variable(fh, app0data)
         if app0data is None:
-            self.error = 'jpegSkipVariable failed'
+            self.error = 'jpeg_skip_variable failed'
             logger.error(self.error)
             return None
 
-        if ord3(marker) == 0xe0 or not discardAppParts:
+        if ord3(marker) == 0xe0 or not discard_app_parts:
             # Always include APP0 marker at start if it's present.
             start.append(pack('BB', 0xff, ord3(marker)))
             # Remember that the length must include itself (2 bytes)
@@ -730,12 +722,13 @@ class IPTCInfo:
         else:
             # Manually insert APP0 if we're trashing application parts, since
             # all JFIF format images should start with the version block.
-            LOGDBG.debug('discardAppParts=%r', discardAppParts)
+            LOGDBG.debug('discard_app_parts=%s', discard_app_parts)
             start.append(pack("BB", 0xff, 0xe0))
             start.append(pack("!H", 16))    # length (including these 2 bytes)
-            start.append("JFIF")            # format
+            start.append(b'JFIF')  # format
             start.append(pack("BB", 1, 2))  # call it version 1.2 (current JFIF)
-            start.append(pack('8B', 0))     # zero everything else
+            start.append(pack('8B', 0, 0, 0, 0, 0, 0, 0, 0))  # zero everything else
+        print('START', discard_app_parts, hex_dump(start))
 
         # Now scan through all markers in file until we hit image data or
         # IPTC stuff.
@@ -766,8 +759,7 @@ class IPTCInfo:
 
             # Take all parts aside from APP13, which we'll replace
             # ourselves.
-            if (discardAppParts and ord3(marker) >= 0xe0
-                    and ord3(marker) <= 0xef):
+            if (discard_app_parts and ord3(marker) >= 0xe0 and ord3(marker) <= 0xef):
                 # Skip all application markers, including Adobe parts
                 adobeParts = b''
             elif ord3(marker) == 0xed:
