@@ -419,7 +419,6 @@ class IPTCInfo:
         self._fobj = fobj
         if duck_typed(fobj, 'read'):  # DELETEME
             self._filename = None
-            self._fh = fobj
         else:
             self._filename = fobj
 
@@ -435,30 +434,16 @@ class IPTCInfo:
             else:
                 logger.warn('No IPTC data found in %s', fobj)
 
-    def _closefh(self, fh):  # DELETEME
-        if fh and self._filename is not None:
-            fh.close()
-
-    def _getfh(self, mode='r'):  # DELETEME
-        assert self._filename is not None or self._fh is not None
-        if self._filename is not None:
-            fh = open(self._filename, (mode + 'b').replace('bb', 'b'))
-            if not fh:
-                logger.error("Can't open file (%r)", self._filename)
-                return None
-            else:
-                return fh
-        else:
-            return self._fh
+    def _filepos(self, fh):
+        """For debugging, return what position in the file we are."""
+        fh.flush()
+        return fh.tell()
 
     def save(self, options=None):
         """Saves Jpeg with IPTC data back to the same file it came from."""
+        # TODO handle case when file handle is passed in
         assert self._filename is not None
         return self.save_as(self._filename, options)
-
-    def _filepos(self, fh):
-        fh.flush()
-        return fh.tell()
 
     def save_as(self, newfile, options=None):
         """Saves Jpeg with IPTC data to a given file name."""
@@ -474,7 +459,7 @@ class IPTCInfo:
             raise Exception('collectfileparts failed')
 
         (start, end, adobe) = ret
-        LOGDBG.debug('start: %d, end: %d, adobe:%d', *map(len, ret))
+        LOGDBG.debug('start: %d, end: %d, adobe: %d', *map(len, ret))
         hex_dump(start)
         LOGDBG.debug('adobe1: %r', adobe)
         if options is not None and 'discardAdobeParts' in options:
@@ -525,53 +510,6 @@ class IPTCInfo:
                 shutil.move(newfile, newfile + '~')
             shutil.move(tmpfn, newfile)
         return True
-
-    def saveToBuf(self, buf, options=None):
-        """
-        Usage:
-        import iptcinfo3
-        from io import BytesIO
-
-        iptc = iptcinfo3.IPTCInfo(src_jpeg)
-        # change iptc data here..
-
-        # Save JPEG with new IPTC to the buf:
-        buf = BytesIO()
-        iptc.saveToBuf(buf)
-
-        # Save JPEG with new IPTC to a file:
-        with open("/tmp/file.jpg", "wb") as f:
-            iptc.saveToBuf(f)
-        """
-
-        fh = self._getfh()
-        fh.seek(0, 0)
-        if not file_is_jpeg(fh):
-            self._closefh(fh)
-            raise ValueError('Source file is not a valid JPEG')
-
-        ret = self.jpegCollectFileParts(fh, options)
-        self._closefh(fh)
-
-        if ret is None:
-            raise ValueError('No IPTC data found')
-
-        (start, end, adobe) = ret
-        if options is not None and 'discardAdobeParts' in options:
-            adobe = None
-
-        buf.write(start)
-        ch = self.c_charset_r.get(self.out_charset, None)
-        # writing the character set is not the best practice
-        # - couldn't find the needed place (record) for it yet!
-        if SURELY_WRITE_CHARSET_INFO and ch is not None:
-            buf.write(pack("!BBBHH", 0x1c, 1, 90, 4, ch))
-
-        data = self.photoshopIIMBlock(adobe, self.packedIIMData())
-        buf.write(data)
-        buf.write(end)
-
-        return buf
 
     def __del__(self):
         """Called when object is destroyed.
