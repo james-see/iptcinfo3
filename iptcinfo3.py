@@ -335,6 +335,12 @@ c_datasets = {
 
 c_datasets_r = {v: k for k, v in c_datasets.items()}
 
+c_charset = {100: 'iso8859_1', 101: 'iso8859_2', 109: 'iso8859_3',
+             110: 'iso8859_4', 111: 'iso8859_5', 125: 'iso8859_7',
+             127: 'iso8859_6', 138: 'iso8859_8',
+             196: 'utf_8'}
+c_charset_r = {v: k for k, v in c_charset.items()}
+
 
 class IPTCData(dict):
     """Dict with int/string keys from c_listdatanames"""
@@ -477,7 +483,7 @@ class IPTCInfo:
         # FIXME `start` contains the old IPTC data, so the next we read, we'll get the wrong data
         tmpfh.write(start)
         # character set
-        ch = self.c_charset_r.get(self.out_charset, None)
+        ch = c_charset_r.get(self.out_charset, None)
         # writing the character set is not the best practice
         # - couldn't find the needed place (record) for it yet!
         if SURELY_WRITE_CHARSET_INFO and ch is not None:
@@ -530,14 +536,14 @@ class IPTCInfo:
         use smart scanning for Jpegs or blind scanning for other file
         types."""
         if file_is_jpeg(fh):
-            logger.info("File is Jpeg, proceeding with JpegScan")
+            logger.info("File is JPEG, proceeding with JpegScan")
             return self.jpegScan(fh)
         else:
             logger.warn("File not a JPEG, trying blindScan")
             return self.blindScan(fh)
 
     c_marker_err = {0: "Marker scan failed",
-                    0xd9:  "Marker scan hit end of image marker",
+                    0xd9: "Marker scan hit EOI (end of image) marker",
                     0xda: "Marker scan hit start of image data"}
 
     def jpegScan(self, fh):
@@ -576,12 +582,6 @@ class IPTCInfo:
         # Now blindScan through the data.
         return self.blindScan(fh, MAX=jpeg_get_variable_length(fh))
 
-    c_charset = {100: 'iso8859_1', 101: 'iso8859_2', 109: 'iso8859_3',
-                 110: 'iso8859_4', 111: 'iso8859_5', 125: 'iso8859_7',
-                 127: 'iso8859_6', 138: 'iso8859_8',
-                 196: 'utf_8'}
-    c_charset_r = {v: k for k, v in c_charset.items()}
-
     def blindScan(self, fh, MAX=8192):
         """Scans blindly to first IIM Record 2 tag in the file. This
         method may or may not work on any arbitrary file type, but it
@@ -615,8 +615,8 @@ class IPTCInfo:
                         except Exception:  # TODO better exception
                             logger.warn('WARNING: problems with charset recognition (%r)', temp)
                             cs = None
-                        if cs in self.c_charset:
-                            self.inp_charset = self.c_charset[cs]
+                        if cs in c_charset:
+                            self.inp_charset = c_charset[cs]
                         logger.info("BlindScan: found character set '%s' at offset %d",
                                     self.inp_charset, offset)
                     except EOFException:
