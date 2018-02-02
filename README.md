@@ -1,4 +1,7 @@
 # IPTCINFO 3
+
+[![Build Status](https://travis-ci.org/crccheck/iptcinfo3.svg?branch=master)](https://travis-ci.org/crccheck/iptcinfo3)
+
 ### Like IPTCInfo but finally compatible for Python 3
 
 IPTCInfo: extract and modify IPTC (metadata) information on images - port of IPTCInfo.pm by Josh Carter <josh@multipart-mixed.com>'
