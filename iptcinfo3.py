@@ -36,6 +36,14 @@ debugMode = 0
 logger = logging.getLogger('iptcinfo')
 LOGDBG = logging.getLogger('iptcinfo.debug')
 
+SOI = 0xd8  # Start of image
+APP0 = 0xe0  # Exif
+APP1 = 0xe1  # Exif
+APP13 = 0xed  # Photoshop3 IPTC
+COM = 0xfe  # Comment
+SOS = 0xda  # Start of scan
+EOI = 0xd9  # End of image
+
 
 # Misc utilities
 ################
@@ -141,7 +149,7 @@ def file_is_jpeg(fh):
     ered = False
     try:
         (ff, soi) = fh.read(2)
-        if not (ff == 0xff and soi == 0xd8):
+        if not (ff == 0xff and soi == SOI):
             ered = False
         else:
             # now check for APP0 marker. I'll assume that anything with a
@@ -177,13 +185,13 @@ def jpeg_next_marker(fh):
     """Scans to the start of the next valid-looking marker. Return
     value is the marker id.
 
-    TODO use .read instead of .readExactly
+    TODO use fh.read instead of read_exactly
     """
     # Find 0xff byte. We should already be on it.
     try:
         byte = read_exactly(fh, 1)
         while ord3(byte) != 0xff:
-            logger.warn("jpeg_next_marker warning: bogus stuff in Jpeg file")
+            # logger.warn("jpeg_next_marker: bogus stuff in Jpeg file at: ')
             byte = read_exactly(fh, 1)
 
         # Now skip any extra 0xffs, which are valid padding.
@@ -228,6 +236,111 @@ def jpeg_skip_variable(fh, rSave=None):
     return (rSave is not None and [temp] or [True])[0]
 
 
+def jpeg_collect_file_parts(fh, discard_app_parts=False):
+    """
+    Collect all pieces of the file except for the IPTC info that we'll replace when saving.
+
+    Returns:
+    start: the stuff before the info
+    end: the stuff after the info
+    adobe: the contents of the Adobe Resource Block that the IPTC data goes in
+
+    Returns None if a file parsing error occured.
+    """
+    adobeParts = b''
+    start = []
+    fh.seek(0)
+    (ff, soi) = fh.read(2)
+    if not (ord3(ff) == 0xff and ord3(soi) == SOI):
+        raise Exception('invalid start of file, is it a Jpeg?')
+
+    # Begin building start of file
+    start.append(pack('BB', 0xff, SOI))  # pack('BB', ff, soi)
+
+    # Get first marker. This *should* be APP0 for JFIF or APP1 for EXIF
+    marker = ord(jpeg_next_marker(fh))
+    while marker != APP0 and marker != APP1:
+        # print('bad first marker: %02X, skipping it' % marker)
+        marker = ord(jpeg_next_marker(fh))
+
+        if marker is None:
+            break
+
+    # print('first marker: %02X %02X' % (marker, APP0))
+    app0data = b''
+    app0data = jpeg_skip_variable(fh, app0data)
+    if app0data is None:
+        raise Exception('jpeg_skip_variable failed')
+
+    if marker == APP0 or not discard_app_parts:
+        # Always include APP0 marker at start if it's present.
+        start.append(pack('BB', 0xff, marker))
+        # Remember that the length must include itself (2 bytes)
+        start.append(pack('!H', len(app0data) + 2))
+        start.append(app0data)
+    else:
+        # Manually insert APP0 if we're trashing application parts, since
+        # all JFIF format images should start with the version block.
+        LOGDBG.debug('discard_app_parts=%s', discard_app_parts)
+        start.append(pack("BB", 0xff, APP0))
+        start.append(pack("!H", 16))    # length (including these 2 bytes)
+        start.append(b'JFIF')  # format
+        start.append(pack("BB", 1, 2))  # call it version 1.2 (current JFIF)
+        start.append(pack('8B', 0, 0, 0, 0, 0, 0, 0, 0))  # zero everything else
+
+    # Now scan through all markers in file until we hit image data or
+    # IPTC stuff.
+    end = []
+    while True:
+        marker = jpeg_next_marker(fh)
+        if marker is None or ord3(marker) == 0:
+            raise Exception('Marker scan failed')
+
+        # Check for end of image
+        elif ord3(marker) == EOI:
+            logger.debug("jpeg_collect_file_parts: saw end of image marker")
+            end.append(pack("BB", 0xff, ord3(marker)))
+            break
+
+        # Check for start of compressed data
+        elif ord3(marker) == SOS:
+            logger.debug("jpeg_collect_file_parts: saw start of compressed data")
+            end.append(pack("BB", 0xff, ord3(marker)))
+            break
+
+        partdata = b''
+        partdata = jpeg_skip_variable(fh, partdata)
+        if not partdata:
+            raise Exception('jpeg_skip_variable failed')
+
+        partdata = bytes(partdata)
+
+        # Take all parts aside from APP13, which we'll replace ourselves.
+        if discard_app_parts and ord3(marker) >= APP0 and ord3(marker) <= 0xef:
+            # Skip all application markers, including Adobe parts
+            adobeParts = b''
+        elif ord3(marker) == 0xed:
+            # Collect the adobe stuff from part 13
+            adobeParts = collect_adobe_parts(partdata)
+            break
+
+        else:
+            # Append all other parts to start section
+            start.append(pack("BB", 0xff, ord3(marker)))
+            start.append(pack("!H", len(partdata) + 2))
+            start.append(partdata)
+
+    # Append rest of file to end
+    while True:
+        buff = fh.read(8192)
+        if buff is None or len(buff) == 0:
+            break
+
+        end.append(buff)
+
+    return (b''.join(start), b''.join(end), adobeParts)
+
+
 def jpeg_debug_scan(filename):  # pragma: no cover
     """Also very helpful when debugging."""
     assert isinstance(filename, str) and os.path.isfile(filename)
@@ -235,7 +348,7 @@ def jpeg_debug_scan(filename):  # pragma: no cover
 
         # Skip past start of file marker
         (ff, soi) = fh.read(2)
-        if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
+        if not (ord3(ff) == 0xff and ord3(soi) == SOI):
             logger.error("jpeg_debug_scan: invalid start of file")
         else:
             # scan to 0xDA (start of scan), dumping the markers we see between
@@ -256,6 +369,72 @@ def jpeg_debug_scan(filename):  # pragma: no cover
                 if not jpeg_skip_variable(fh):
                     logger.warn("jpeg_skip_variable failed")
                     return None
+
+
+def collect_adobe_parts(data):
+    """Part APP13 contains yet another markup format, one defined by
+    Adobe.  See"File Formats Specification" in the Photoshop SDK
+    (avail from www.adobe.com). We must take
+    everything but the IPTC data so that way we can write the file back
+    without losing everything else Photoshop stuffed into the APP13
+    block."""
+    assert isinstance(data, bytes)
+    length = len(data)
+    offset = 0
+    out = []
+    # Skip preamble
+    offset = len('Photoshop 3.0 ')
+    # Process everything
+    while offset < length:
+        # Get OSType and ID
+        (ostype, id1, id2) = unpack("!LBB", data[offset:offset + 6])
+        offset += 6
+        if offset >= length:
+            break
+
+        # Get pascal string
+        stringlen = unpack("B", data[offset:offset + 1])[0]
+        offset += 1
+        if offset >= length:
+            break
+
+        string = data[offset:offset + stringlen]
+        offset += stringlen
+
+        # round up if odd
+        if (stringlen % 2 != 0):
+            offset += 1
+        # there should be a null if string len is 0
+        if stringlen == 0:
+            offset += 1
+        if offset >= length:
+            break
+
+        # Get variable-size data
+        size = unpack("!L", data[offset:offset + 4])[0]
+        offset += 4
+        if offset >= length:
+            break
+
+        var = data[offset:offset + size]
+        offset += size
+        if size % 2 != 0:
+            offset += 1  # round up if odd
+
+        # skip IIM data (0x0404), but write everything else out
+        if not (id1 == 4 and id2 == 4):
+            out.append(pack("!LBB", ostype, id1, id2))
+            out.append(pack("B", stringlen))
+            out.append(string)
+            if stringlen == 0 or stringlen % 2 != 0:
+                out.append(pack("B", 0))
+            out.append(pack("!L", size))
+            out.append(var)
+            out = [''.join(out)]
+            if size % 2 != 0 and len(out[0]) % 2 != 0:
+                out.append(pack("B", 0))
+
+    return b''.join(out)
 
 
 #####################################
@@ -450,16 +629,13 @@ class IPTCInfo:
         """Saves Jpeg with IPTC data to a given file name."""
         with smart_open(self._fobj, 'rb') as fh:
             if not file_is_jpeg(fh):
-                logger.error("Source file is not a Jpeg; I can only save Jpegs. Sorry.")
+                logger.error('Source file %s is not a Jpeg.' % self._fob)
                 return None
 
-            # XXX bug in jpegCollectFileParts? it's not supposed to return old
-            # meta, but it does. discarding app parts keeps it from doing this
-            jpeg_parts = self.jpegCollectFileParts(fh, discard_app_parts=True)
+            jpeg_parts = jpeg_collect_file_parts(fh)
 
         if jpeg_parts is None:
-            logger.error("collectfileparts failed")
-            raise Exception('collectfileparts failed')
+            raise Exception('jpeg_collect_file_parts failed: %s' % self.error)
 
         (start, end, adobe) = jpeg_parts
         LOGDBG.debug('start: %d, end: %d, adobe: %d', *map(len, jpeg_parts))
@@ -558,7 +734,7 @@ class IPTCInfo:
         except EOFException:
             return None
 
-        if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
+        if not (ord3(ff) == 0xff and ord3(soi) == SOI):
             self.error = "JpegScan: invalid start of file"
             logger.error(self.error)
             return None
@@ -572,7 +748,7 @@ class IPTCInfo:
 
             err = self.c_marker_err.get(ord3(marker), None)
             if err is None and jpeg_skip_variable(fh) == 0:
-                err = "JpegSkipVariable failed"
+                err = "jpeg_skip_variable failed"
             if err is not None:
                 self.error = err
                 logger.warn(err)
@@ -661,7 +837,7 @@ class IPTCInfo:
                 return None
 
             alist = {'tag': tag, 'record': record, 'dataset': dataset, 'length': length}
-            logger.debug('\n'.join('%s\t: %s' % (k, v) for k, v in alist.items()))
+            logger.debug('\t'.join('%s: %s' % (k, v) for k, v in alist.items()))
             value = fh.read(length)
 
             if self.inp_charset:
@@ -682,170 +858,6 @@ class IPTCInfo:
     #######################################################################
     # File Saving
     #######################################################################
-
-    def jpegCollectFileParts(self, fh, discard_app_parts=False):
-        """Collects all pieces of the file except for the IPTC info that
-        we'll replace when saving. Returns the stuff before the info,
-        stuff after, and the contents of the Adobe Resource Block that the
-        IPTC data goes in.
-
-        Returns None if a file parsing error occured.
-        """
-        adobeParts = b''
-        start = []
-        fh.seek(0, 0)
-        # Skip past start of file marker
-        (ff, soi) = fh.read(2)
-        if not (ord3(ff) == 0xff and ord3(soi) == 0xd8):
-            self.error = "jpegCollectFileParts: invalid start of file"
-            logger.error(self.error)
-            return None
-
-        # Begin building start of file
-        start.append(pack('BB', 0xff, 0xd8))  # pack('BB', ff, soi)
-
-        # Get first marker in file. This will be APP0 for JFIF or APP1 for EXIF
-        marker = jpeg_next_marker(fh)
-        app0data = b''
-        app0data = jpeg_skip_variable(fh, app0data)
-        if app0data is None:
-            self.error = 'jpeg_skip_variable failed'
-            logger.error(self.error)
-            return None
-
-        if ord3(marker) == 0xe0 or not discard_app_parts:
-            # Always include APP0 marker at start if it's present.
-            start.append(pack('BB', 0xff, ord3(marker)))
-            # Remember that the length must include itself (2 bytes)
-            start.append(pack('!H', len(app0data) + 2))
-            start.append(app0data)
-        else:
-            # Manually insert APP0 if we're trashing application parts, since
-            # all JFIF format images should start with the version block.
-            LOGDBG.debug('discard_app_parts=%s', discard_app_parts)
-            start.append(pack("BB", 0xff, 0xe0))
-            start.append(pack("!H", 16))    # length (including these 2 bytes)
-            start.append(b'JFIF')  # format
-            start.append(pack("BB", 1, 2))  # call it version 1.2 (current JFIF)
-            start.append(pack('8B', 0, 0, 0, 0, 0, 0, 0, 0))  # zero everything else
-        print('START', discard_app_parts, hex_dump(start))
-
-        # Now scan through all markers in file until we hit image data or
-        # IPTC stuff.
-        end = []
-        while True:
-            marker = jpeg_next_marker(fh)
-            if marker is None or ord3(marker) == 0:
-                self.error = "Marker scan failed"
-                logger.error(self.error)
-                return None
-            # Check for end of image
-            elif ord3(marker) == 0xd9:
-                logger.debug("JpegCollectFileParts: saw end of image marker")
-                end.append(pack("BB", 0xff, ord3(marker)))
-                break
-            # Check for start of compressed data
-            elif ord3(marker) == 0xda:
-                logger.debug("JpegCollectFileParts: saw start of compressed data")
-                end.append(pack("BB", 0xff, ord3(marker)))
-                break
-            partdata = b''
-            partdata = jpeg_skip_variable(fh, partdata)
-            if not partdata:
-                self.error = "JpegSkipVariable failed"
-                logger.error(self.error)
-                return None
-            partdata = bytes(partdata)
-
-            # Take all parts aside from APP13, which we'll replace
-            # ourselves.
-            if (discard_app_parts and ord3(marker) >= 0xe0 and ord3(marker) <= 0xef):
-                # Skip all application markers, including Adobe parts
-                adobeParts = b''
-            elif ord3(marker) == 0xed:
-                # Collect the adobe stuff from part 13
-                adobeParts = self.collectAdobeParts(partdata)
-                break
-            else:
-                # Append all other parts to start section
-                start.append(pack("BB", 0xff, ord3(marker)))
-                start.append(pack("!H", len(partdata) + 2))
-                start.append(partdata)
-
-        # Append rest of file to end
-        while True:
-            buff = fh.read(8192)
-            if buff is None or len(buff) == 0:
-                break
-
-            end.append(buff)
-
-        return (b''.join(start), b''.join(end), adobeParts)
-
-    def collectAdobeParts(self, data):
-        """Part APP13 contains yet another markup format, one defined by
-        Adobe.  See"File Formats Specification" in the Photoshop SDK
-        (avail from www.adobe.com). We must take
-        everything but the IPTC data so that way we can write the file back
-        without losing everything else Photoshop stuffed into the APP13
-        block."""
-        assert isinstance(data, bytes)
-        length = len(data)
-        offset = 0
-        out = []
-        # Skip preamble
-        offset = len('Photoshop 3.0 ')
-        # Process everything
-        while offset < length:
-            # Get OSType and ID
-            (ostype, id1, id2) = unpack("!LBB", data[offset:offset + 6])
-            offset += 6
-            if offset >= length:
-                break
-
-            # Get pascal string
-            stringlen = unpack("B", data[offset:offset + 1])[0]
-            offset += 1
-            if offset >= length:
-                break
-
-            string = data[offset:offset + stringlen]
-            offset += stringlen
-
-            # round up if odd
-            if (stringlen % 2 != 0):
-                offset += 1
-            # there should be a null if string len is 0
-            if stringlen == 0:
-                offset += 1
-            if offset >= length:
-                break
-
-            # Get variable-size data
-            size = unpack("!L", data[offset:offset + 4])[0]
-            offset += 4
-            if offset >= length:
-                break
-
-            var = data[offset:offset + size]
-            offset += size
-            if size % 2 != 0:
-                offset += 1  # round up if odd
-
-            # skip IIM data (0x0404), but write everything else out
-            if not (id1 == 4 and id2 == 4):
-                out.append(pack("!LBB", ostype, id1, id2))
-                out.append(pack("B", stringlen))
-                out.append(string)
-                if stringlen == 0 or stringlen % 2 != 0:
-                    out.append(pack("B", 0))
-                out.append(pack("!L", size))
-                out.append(var)
-                out = [''.join(out)]
-                if size % 2 != 0 and len(out[0]) % 2 != 0:
-                    out.append(pack("B", 0))
-
-        return b''.join(out)
 
     def _enc(self, text):
         """Recodes the given text from the old character set to utf-8"""

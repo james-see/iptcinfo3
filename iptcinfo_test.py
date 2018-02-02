@@ -5,10 +5,11 @@ import pytest
 
 from iptcinfo3 import (
     EOFException,
-    hex_dump,
-    file_is_jpeg,
     IPTCData,
     IPTCInfo,
+    file_is_jpeg,
+    hex_dump,
+    jpeg_collect_file_parts,
 )
 
 
@@ -23,6 +24,22 @@ def test_EOFException_message():
 def test_hex_dump():
     out = hex_dump(b'ABCDEF')
     assert out.strip() == '41 42 43 44 45 46                                     | ABCDEF'
+
+
+def test_jpeg_collect_parts_works_with_many_jpegs():
+    with open('fixtures/Lenna.jpg', 'rb') as fh:
+        start, end, adobe = jpeg_collect_file_parts(fh)
+
+    assert len(start) == 356
+    assert len(end) == 42891
+    assert len(adobe) == 0
+
+    with open('fixtures/instagram.jpg', 'rb') as fh:
+        start, end, adobe = jpeg_collect_file_parts(fh)
+
+    assert len(start) == 20
+    assert len(end) == 73394
+    assert len(adobe) == 0
 
 
 def test_IPTCData():
@@ -77,11 +94,11 @@ def test_save_as_saves_as_new_file_with_info():
     # The files won't be byte for byte exact, so filecmp won't work
     assert info._data == info2._data
     with open('fixtures/Lenna.jpg', 'rb') as fh, open('fixtures/deleteme.jpg', 'rb') as fh2:
-        start, end, adobe = info.jpegCollectFileParts(fh)
-        start2, end2, adobe2 = info.jpegCollectFileParts(fh2)
+        start, end, adobe = jpeg_collect_file_parts(fh)
+        start2, end2, adobe2 = jpeg_collect_file_parts(fh2)
 
     # But we can compare each section
-    # assert start == start2  # FIXME?
+    assert start == start2
     assert end == end2
     assert adobe == adobe2
 
