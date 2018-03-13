@@ -238,7 +238,7 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '1.9.5-8'
+__version__ = '2.2.0'
 __author__ = 'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
@@ -790,7 +790,7 @@ class IPTCInfo(object):
         ered = False
         try:
             (ff, soi) = fh.read(2)
-            if not (ord(ff) == 0xff and ord(soi) == 0xd8):
+            if not (ff == 0xff and soi == 0xd8):
                 ered = False
             else:
                 # now check for APP0 marker. I'll assume that anything with a
@@ -798,7 +798,7 @@ class IPTCInfo(object):
                 # (We're not dinking with image data, so anything following
                 # the Jpeg tagging system should work.)
                 (ff, app0) = fh.read(2)
-                if not (ord(ff) == 0xff):
+                if not (ff == 0xff):
                     ered = False
                 else:
                     ered = True
@@ -824,7 +824,7 @@ class IPTCInfo(object):
         except EOFException:
             return None
 
-        if not (ord(ff) == 0xff and ord(soi) == 0xd8):
+        if not (ff == 0xff and soi == 0xd8):
             self.error = "JpegScan: invalid start of file"
             LOG.error(self.error)
             return None
@@ -832,10 +832,10 @@ class IPTCInfo(object):
         while 1:
             err = None
             marker = self.jpegNextMarker(fh)
-            if ord(marker) == 0xed:
+            if marker == 0xed:
                 break  # 237
 
-            err = self.c_marker_err.get(ord(marker), None)
+            err = self.c_marker_err.get(marker, None)
             if err is None and self.jpegSkipVariable(fh) == 0:
                 err = "JpegSkipVariable failed"
             if err is not None:
@@ -858,7 +858,7 @@ class IPTCInfo(object):
         except EOFException:
             return None
 
-        while ord(byte) != 0xff:
+        while byte != 0xff:
             LOG.warn("JpegNextMarker: warning: bogus stuff in Jpeg file")
             try:
                 byte = self.readExactly(fh, 1)
@@ -870,11 +870,11 @@ class IPTCInfo(object):
                 byte = self.readExactly(fh, 1)
             except EOFException:
                 return None
-            if ord(byte) != 0xff:
+            if byte != 0xff:
                 break
 
         # byte should now contain the marker id.
-        LOG.debug("JpegNextMarker: at marker %02X (%d)", ord(byte), ord(byte))
+        LOG.debug("JpegNextMarker: at marker %02X (%d)", byte, byte)
         return byte
 
     def jpegGetVariableLength(self, fh):  # OK
@@ -955,7 +955,7 @@ class IPTCInfo(object):
                 LOG.warn("BlindScan: hit EOF while scanning")
                 return None
             # look for tag identifier 0x1c
-            if ord(temp) == 0x1c:
+            if temp == 0x1c:
                 # if we found that, look for record 2, dataset 0
                 # (record version number)
                 (record, dataset) = fh.read(2)
@@ -1061,7 +1061,7 @@ class IPTCInfo(object):
         fh.seek(0, 0)
         # Skip past start of file marker
         (ff, soi) = fh.read(2)
-        if not (ord(ff) == 0xff and ord(soi) == 0xd8):
+        if not (ff == 0xff and soi == 0xd8):
             self.error = "JpegScan: invalid start of file"
             LOG.error(self.error)
             return None
@@ -1079,9 +1079,9 @@ class IPTCInfo(object):
             LOG.error(self.error)
             return None
 
-        if ord(marker) == 0xe0 or not discardAppParts:
+        if marker == 0xe0 or not discardAppParts:
             # Always include APP0 marker at start if it's present.
-            start.append(pack('BB', 0xff, ord(marker)))
+            start.append(pack('BB', 0xff, marker))
             # Remember that the length must include itself (2 bytes)
             start.append(pack('!H', len(app0data) + 2))
             start.append(app0data)
@@ -1101,19 +1101,19 @@ class IPTCInfo(object):
         end = []
         while 1:
             marker = self.jpegNextMarker(fh)
-            if marker is None or ord(marker) == 0:
+            if marker is None or marker == 0:
                 self.error = "Marker scan failed"
                 LOG.error(self.error)
                 return None
             # Check for end of image
-            elif ord(marker) == 0xd9:
+            elif marker == 0xd9:
                 LOG.debug("JpegCollectFileParts: saw end of image marker")
-                end.append(pack("BB", 0xff, ord(marker)))
+                end.append(pack("BB", 0xff, marker))
                 break
             # Check for start of compressed data
-            elif ord(marker) == 0xda:
+            elif marker == 0xda:
                 LOG.debug("JpegCollectFileParts: saw start of compressed data")
-                end.append(pack("BB", 0xff, ord(marker)))
+                end.append(pack("BB", 0xff, marker))
                 break
             partdata = ''
             partdata = self.jpegSkipVariable(fh, partdata)
@@ -1125,17 +1125,17 @@ class IPTCInfo(object):
 
             # Take all parts aside from APP13, which we'll replace
             # ourselves.
-            if (discardAppParts and ord(marker) >= 0xe0
-                    and ord(marker) <= 0xef):
+            if (discardAppParts and marker >= 0xe0
+                    and marker <= 0xef):
                 # Skip all application markers, including Adobe parts
                 adobeParts = ''
-            elif ord(marker) == 0xed:
+            elif marker == 0xed:
                 # Collect the adobe stuff from part 13
                 adobeParts = self.collectAdobeParts(partdata)
                 break
             else:
                 # Append all other parts to start section
-                start.append(pack("BB", 0xff, ord(marker)))
+                start.append(pack("BB", 0xff, marker))
                 start.append(pack("!H", len(partdata) + 2))
                 start.append(partdata)
 
@@ -1302,7 +1302,7 @@ class IPTCInfo(object):
     def hexDump(dump):
         """Very helpful when debugging."""
         length = len(dump)
-        P = lambda z: ((ord(z) >= 0x21 and ord(z) <= 0x7e) and [z] or ['.'])[0]
+        P = lambda z: str(((z >= 0x21 and z <= 0x7e) and [z] or ['.'])[0])
         ROWLEN = 18
         res = ['\n']
         for j in range(length // ROWLEN + int(length % ROWLEN > 0)):
@@ -1323,20 +1323,20 @@ class IPTCInfo(object):
 
         # Skip past start of file marker
         (ff, soi) = fh.read(2)
-        if not (ord(ff) == 0xff and ord(soi) == 0xd8):
+        if not (ff == 0xff and soi == 0xd8):
             LOG.error("JpegScan: invalid start of file")
         else:
             # scan to 0xDA (start of scan), dumping the markers we see between
             # here and there.
             while 1:
                 marker = self.jpegNextMarker(fh)
-                if ord(marker) == 0xda:
+                if marker == 0xda:
                     break
 
-                if ord(marker) == 0:
+                if marker == 0:
                     LOG.warn("Marker scan failed")
                     break
-                elif ord(marker) == 0xd9:
+                elif marker == 0xd9:
                     LOG.debug("Marker scan hit end of image marker")
                     break
 
