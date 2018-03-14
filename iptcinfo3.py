@@ -238,7 +238,7 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '2.2.0'
+__version__ = '2.2.2'
 __author__ = 'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
@@ -289,7 +289,7 @@ def duck_typed(obj, prefs):
 sys_enc = sys.getfilesystemencoding()
 
 #  Debug off for production use
-debugMode = 0
+debugMode = 1
 
 #####################################
 # These names match the codes defined in ITPC's IIM record 2.
@@ -832,10 +832,10 @@ class IPTCInfo(object):
         while 1:
             err = None
             marker = self.jpegNextMarker(fh)
-            if marker == 0xed:
+            if ord(marker) == 0xed:
                 break  # 237
 
-            err = self.c_marker_err.get(marker, None)
+            err = self.c_marker_err.get(ord(marker))
             if err is None and self.jpegSkipVariable(fh) == 0:
                 err = "JpegSkipVariable failed"
             if err is not None:
@@ -858,8 +858,8 @@ class IPTCInfo(object):
         except EOFException:
             return None
 
-        while byte != 0xff:
-            LOG.warn("JpegNextMarker: warning: bogus stuff in Jpeg file")
+        while ord(byte) != 0xff:
+            LOG.warn(f"JpegNextMarker: warning: bogus stuff in Jpeg file: {byte}")
             try:
                 byte = self.readExactly(fh, 1)
             except EOFException:
@@ -870,7 +870,7 @@ class IPTCInfo(object):
                 byte = self.readExactly(fh, 1)
             except EOFException:
                 return None
-            if byte != 0xff:
+            if ord(byte) != 0xff:
                 break
 
         # byte should now contain the marker id.
@@ -924,7 +924,6 @@ class IPTCInfo(object):
                 LOG.error("JpegSkipVariable: read failed while skipping"
                     " var data")
                 return None
-
         return (rSave is not None and [temp] or [True])[0]
 
     c_charset = {100: 'iso8859_1', 101: 'iso8859_2', 109: 'iso8859_3',
@@ -939,7 +938,6 @@ class IPTCInfo(object):
         doesn't hurt to check. We expect to see this tag within the first
         8k of data. (This limit may need to be changed or eliminated
         depending on how other programs choose to store IIM.)"""
-
         ## assert isinstance(fh, file)
         assert duck_typed(fh, 'read')
         offset = 0
@@ -955,7 +953,7 @@ class IPTCInfo(object):
                 LOG.warn("BlindScan: hit EOF while scanning")
                 return None
             # look for tag identifier 0x1c
-            if temp == 0x1c:
+            if ord(temp) == 0x1c:
                 # if we found that, look for record 2, dataset 0
                 # (record version number)
                 (record, dataset) = fh.read(2)
@@ -1038,9 +1036,9 @@ class IPTCInfo(object):
             # current IIM spec (version 4) are currently discarded.
             if (dataset in self._data
                     and hasattr(self._data[dataset], 'append')):
-                self._data[dataset].append(value)
+                self._data[dataset].append(value.decode())
             elif dataset != 0:
-                self._data[dataset] = value
+                self._data[dataset] = value.decode()
 
     #######################################################################
     # File Saving
@@ -1079,9 +1077,9 @@ class IPTCInfo(object):
             LOG.error(self.error)
             return None
 
-        if marker == 0xe0 or not discardAppParts:
+        if ord(marker) == 0xe0 or not discardAppParts:
             # Always include APP0 marker at start if it's present.
-            start.append(pack('BB', 0xff, marker))
+            start.append(pack('BB', 0xff, ord(marker)))
             # Remember that the length must include itself (2 bytes)
             start.append(pack('!H', len(app0data) + 2))
             start.append(app0data)
@@ -1101,19 +1099,19 @@ class IPTCInfo(object):
         end = []
         while 1:
             marker = self.jpegNextMarker(fh)
-            if marker is None or marker == 0:
+            if marker is None or ord(marker) == 0:
                 self.error = "Marker scan failed"
                 LOG.error(self.error)
                 return None
             # Check for end of image
-            elif marker == 0xd9:
+            elif ord(marker) == 0xd9:
                 LOG.debug("JpegCollectFileParts: saw end of image marker")
-                end.append(pack("BB", 0xff, marker))
+                end.append(pack("BB", 0xff, ord(marker)))
                 break
             # Check for start of compressed data
-            elif marker == 0xda:
+            elif ord(marker) == 0xda:
                 LOG.debug("JpegCollectFileParts: saw start of compressed data")
-                end.append(pack("BB", 0xff, marker))
+                end.append(pack("BB", 0xff, ord(marker)))
                 break
             partdata = ''
             partdata = self.jpegSkipVariable(fh, partdata)
@@ -1311,7 +1309,7 @@ class IPTCInfo(object):
                 row = ''.join(row)
             res.append(
             ('%02X ' * len(row) + '   ' * (ROWLEN - len(row)) + '| %s\n') % \
-                tuple(list(map(ord, list(row))) + [''.join(map(P, row))]))
+                tuple(list(row) + [''.join(map(P, row))]))
         return ''.join(res)
 
     def jpegDebugScan(self, filename):
