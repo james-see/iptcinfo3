@@ -238,7 +238,7 @@ AUTHOR
 Josh Carter, josh@multipart-mixed.com
 """
 
-__version__ = '2.2.2'
+__version__ = '2.2.3'
 __author__ = 'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
@@ -289,7 +289,7 @@ def duck_typed(obj, prefs):
 sys_enc = sys.getfilesystemencoding()
 
 #  Debug off for production use
-debugMode = 1
+debugMode = 0
 
 #####################################
 # These names match the codes defined in ITPC's IIM record 2.
@@ -1036,9 +1036,9 @@ class IPTCInfo(object):
             # current IIM spec (version 4) are currently discarded.
             if (dataset in self._data
                     and hasattr(self._data[dataset], 'append')):
-                self._data[dataset].append(value.decode())
+                self._data[dataset].append(value)
             elif dataset != 0:
-                self._data[dataset] = value.decode()
+                self._data[dataset] = value
 
     #######################################################################
     # File Saving
