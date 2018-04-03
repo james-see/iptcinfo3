@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # :mode=python:encoding=UTF-8:
-from iptcinfo import IPTCInfo
+from iptcinfo3 import IPTCInfo
 import logging
 logging.basicConfig(level=logging.DEBUG)
 import sys
