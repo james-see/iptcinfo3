@@ -1,1 +1,0 @@
-IPTCInfo-1.9.4.pm
