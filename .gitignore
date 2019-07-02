@@ -9,3 +9,7 @@ build/*
 .cache
 __pycache__
 
+# Test files cleanup
+.jpg
+.jpeg
+

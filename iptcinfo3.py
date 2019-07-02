@@ -27,6 +27,7 @@ from struct import pack, unpack
 
 __version__ = '2.1'
 __author__ = 'Gulácsi, Tamás'
+__updated_by__ = 'Campbell, James'
 
 SURELY_WRITE_CHARSET_INFO = False
 debugMode = 0
