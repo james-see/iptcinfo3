@@ -16,6 +16,11 @@ from setuptools import setup
 from distutils.command.sdist import sdist as _sdist
 import sys
 
+from os import path
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
+
 if sys.version_info < (2, 3):
     _setup = setup
 
@@ -40,7 +45,7 @@ def openfile(fname):
     return open(os.path.join(os.path.dirname(__file__), fname))
 
 version = next((row.split('=', 1)[-1].strip().strip("'").strip('"')
-    for row in open('iptcinfo3.py', 'rU')
+    for row in open('iptcinfo3.py', 'r')
     if row.startswith('__version__')))
 #~ version = '1.9.2-rc8'
 #zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
@@ -53,7 +58,8 @@ setup(  # cmdclass={'sdist': sdist},
     author_email='gthomas@fw.hu',
     maintainer='James Campbell',
     maintainer_email='jc@normail.co',
-    long_description=openfile('README.md').read(),
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     license='http://www.opensource.org/licenses/gpl-license.php',
     platforms=['any'],
     description=openfile('README.md').readline(),

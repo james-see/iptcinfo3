@@ -1,3 +1,5 @@
+2.1: Fixes merged to save modified IPTC info images
+
 1.9.5-8: https://bitbucket.org/gthomas/iptcinfo/issue/4/file-permissions-for-changed-files-are-not - copy original file's permission bits on save/saveAs
 
 1.9.5-7: https://bitbucket.org/gthomas/iptcinfo/issue/3/images-w-o-iptc-data-should-not-log-errors - have silencable parse errors.
