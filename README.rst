@@ -26,28 +26,27 @@ to be fed into a database.
 Usage
 -----
 
-from iptcinfo3 import IPTCInfo
+``from iptcinfo3 import IPTCInfo``
 
 
-# Create new info object
-info = IPTCInfo('doge.jpg')
+Create new info object
+``info = IPTCInfo('doge.jpg')``
 
-# Print list of keywords, supplemental categories, contacts
-print(info['keywords'])
-print(info['supplementalCategories'])
-print(info['contacts'])
+Print list of keywords, supplemental categories, contacts
+``print(info['keywords'])``
+``print(info['supplementalCategories'])``
+``print(info['contacts'])``
 
-# Get specific attributes...
-caption = info['caption/abstract']
+Get specific attributes...
+``caption = info['caption/abstract']``
 
-# Create object for file that may not have IPTC data
-info = IPTCInfo('such_iptc.jpg', force=True)
+Create object for file that may not have IPTC data
+``info = IPTCInfo('such_iptc.jpg', force=True)``
 
-# Add/change an attribute
-info['caption/abstract'] = 'Witty caption here'
-info['supplemental category'] = ['portrait']
+Add/change an attribute
+``info['caption/abstract'] = 'Witty caption here'``
+``info['supplemental category'] = ['portrait']``
 
-# Save new info to file
-##### See disclaimer in 'SAVING FILES' section #####
-info.save()
-info.save_as('very_meta.jpg')
+Save new info to file
+``info.save()``
+``info.save_as('very_meta.jpg')``
