@@ -1,8 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# Author: 2004 Gulácsi Tamás
+"""SETUP THIS STUFF."""
+import sys
+from distutils.command.sdist import sdist as _sdist
+from os import path
 
-classifiers = """\
+from setuptools import setup
+classifiers = """
 Development Status :: 3 - Alpha
 License :: OSI Approved :: Artistic License
 License :: OSI Approved :: GNU General Public License (GPL)
@@ -12,13 +14,8 @@ Topic :: Multimedia :: Graphics
 Topic :: Utilities
 """
 
-from setuptools import setup
-from distutils.command.sdist import sdist as _sdist
-import sys
-
-from os import path
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 if sys.version_info < (2, 3):
@@ -44,11 +41,10 @@ def openfile(fname):
     import os
     return open(os.path.join(os.path.dirname(__file__), fname))
 
+
 version = next((row.split('=', 1)[-1].strip().strip("'").strip('"')
-    for row in open('iptcinfo3.py', 'r')
-    if row.startswith('__version__')))
-#~ version = '1.9.2-rc8'
-#zipext = (sys.platform.startswith('Win') and ['zip'] or ['tar.gz'])[0]
+                for row in open('iptcinfo3.py', 'r')
+                if row.startswith('__version__')))
 setup(  # cmdclass={'sdist': sdist},
     name='IPTCInfo3',
     version=version,
@@ -59,10 +55,9 @@ setup(  # cmdclass={'sdist': sdist},
     maintainer='James Campbell',
     maintainer_email='jc@normail.co',
     long_description=long_description,
-    long_description_content_type='text/markdown',
     license='http://www.opensource.org/licenses/gpl-license.php',
     platforms=['any'],
-    description=openfile('README.md').readline(),
+    description=openfile('README.rst').readline(),
     classifiers=[_f for _f in classifiers.split('\n') if _f],
     py_modules=['iptcinfo3'],
     )
