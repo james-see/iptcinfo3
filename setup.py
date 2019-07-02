@@ -12,7 +12,7 @@ Topic :: Multimedia :: Graphics
 Topic :: Utilities
 """
 
-from distutils.core import setup
+from setuptools import setup
 from distutils.command.sdist import sdist as _sdist
 import sys
 
