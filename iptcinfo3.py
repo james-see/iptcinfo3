@@ -430,7 +430,7 @@ def collect_adobe_parts(data):
                 out.append(pack("B", 0))
             out.append(pack("!L", size))
             out.append(var)
-            out = [''.join(out)]
+            out = [b''.join(out)]
             if size % 2 != 0 and len(out[0]) % 2 != 0:
                 out.append(pack("B", 0))
 
