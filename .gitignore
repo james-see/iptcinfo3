@@ -4,3 +4,8 @@ __pycache__
 
 # Packaging files
 *.egg-info
+dist/*
+build/*
+.cache
+__pycache__
+

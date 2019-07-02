@@ -25,7 +25,7 @@ import sys
 import tempfile
 from struct import pack, unpack
 
-__version__ = '1.9.5-8'
+__version__ = '2.1'
 __author__ = 'Gulácsi, Tamás'
 
 SURELY_WRITE_CHARSET_INFO = False
