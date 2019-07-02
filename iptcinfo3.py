@@ -25,7 +25,7 @@ import sys
 import tempfile
 from struct import pack, unpack
 
-__version__ = '2.1'
+__version__ = '2.1.4'
 __author__ = 'Gulácsi, Tamás'
 __updated_by__ = 'Campbell, James'
 

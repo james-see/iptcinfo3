@@ -15,7 +15,7 @@ Topic :: Utilities
 """
 
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
+with open(path.join(this_directory, 'README.rst')) as f:
     long_description = f.read()
 
 if sys.version_info < (2, 3):
@@ -57,7 +57,7 @@ setup(  # cmdclass={'sdist': sdist},
     long_description=long_description,
     license='http://www.opensource.org/licenses/gpl-license.php',
     platforms=['any'],
-    description=openfile('README.rst').readline(),
+    description="""A great way to get IPTCInfo""",
     classifiers=[_f for _f in classifiers.split('\n') if _f],
     py_modules=['iptcinfo3'],
     )
