@@ -13,3 +13,6 @@ __pycache__
 .jpg
 .jpeg
 
+# ide stuff
+.vscode
+.vscode/*
