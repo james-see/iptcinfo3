@@ -687,7 +687,7 @@ class IPTCInfo:
         else:
             tmpfh.close()
             if os.path.exists(newfile):
-                shutil.move(newfile, newfile + '~')
+                shutil.move(newfile, "{file}~".format(file=newfile))
             shutil.move(tmpfn, newfile)
         return True
 
