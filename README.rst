@@ -47,6 +47,9 @@ Add/change an attribute
 ``info['caption/abstract'] = 'Witty caption here'``
 ``info['supplemental category'] = ['portrait']``
 
+Lists for keywords, so you can just append!
+``info['keywords']).append('cool')``
+
 Save new info to file
 ``info.save()``
 ``info.save_as('very_meta.jpg')``
