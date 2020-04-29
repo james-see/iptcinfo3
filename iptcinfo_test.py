@@ -48,6 +48,9 @@ def test_IPTCData():
     assert data[105].startswith('Audiobook')
     assert data['Headline'].startswith('Audiobook')
 
+    assert 'headline' in data
+    assert 105 in data
+
     data['keywords'] = ['foo']
     data['keywords'] = ['foo', 'bar']
     with pytest.raises(ValueError):
@@ -59,10 +62,16 @@ def test_IPTCData():
     with pytest.raises(KeyError):
         data['yobby'] = 'yoshi'
 
+    assert 'yobby' not in data
+    assert 9999 not in data
+
     data = IPTCData({'nonstandard_69': 'sanic'})
     assert data[69] == 'sanic'
 
     assert str(data) == "{'nonstandard_69': 'sanic'}"
+
+    assert 69 in data
+    assert 'nonstandard_69' in data
 
 
 def test_file_is_jpeg_detects_invalid_file():
@@ -81,6 +90,8 @@ def test_getitem_can_read_info():
     assert info['supplemental category'] == [b'supplemental category']
     assert info['caption/abstract'] == b'I am a caption'
 
+    assert 'keywords' in info
+    assert 'nonexistent' not in info
 
 def test_save_as_saves_as_new_file_with_info():
     if os.path.isfile('fixtures/deleteme.jpg'):  # pragma: no cover
