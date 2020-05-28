@@ -553,6 +553,13 @@ class IPTCData(dict):
         else:
             raise KeyError("Key %s is not in %s!" % (key, list(c_datasets.keys())))
 
+    def __contains__(self, name):
+        try:
+            key = self._key_as_int(name)
+        except KeyError:
+            return False
+        return super().__contains__(key)
+
     def __getitem__(self, name):
         return self.get(self._key_as_int(name), None)
 
@@ -698,6 +705,9 @@ class IPTCInfo:
 
     def __len__(self):
         return len(self._data)
+
+    def __contains__(self, key):
+        return key in self._data
 
     def __getitem__(self, key):
         return self._data[key]
