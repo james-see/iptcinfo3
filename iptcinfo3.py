@@ -177,7 +177,7 @@ def jpeg_get_variable_length(fh):
 
     # Length includes itself, so must be at least 2
     if length < 2:
-        logger.warn("jpeg_get_variable_length: erroneous JPEG marker length")
+        logger.warning("jpeg_get_variable_length: erroneous JPEG marker length")
         return 0
     return length - 2
 
@@ -192,7 +192,7 @@ def jpeg_next_marker(fh):
     try:
         byte = read_exactly(fh, 1)
         while ord3(byte) != 0xff:
-            # logger.warn("jpeg_next_marker: bogus stuff in Jpeg file at: ')
+            # logger.warning("jpeg_next_marker: bogus stuff in Jpeg file at: ')
             byte = read_exactly(fh, 1)
 
         # Now skip any extra 0xffs, which are valid padding.
@@ -360,7 +360,7 @@ def jpeg_debug_scan(filename):  # pragma: no cover
                     break
 
                 if ord3(marker) == 0:
-                    logger.warn("Marker scan failed")
+                    logger.warning("Marker scan failed")
                     break
 
                 elif ord3(marker) == 0xd9:
@@ -368,7 +368,7 @@ def jpeg_debug_scan(filename):  # pragma: no cover
                     break
 
                 if not jpeg_skip_variable(fh):
-                    logger.warn("jpeg_skip_variable failed")
+                    logger.warning("jpeg_skip_variable failed")
                     return None
 
 
@@ -620,7 +620,7 @@ class IPTCInfo:
                 if datafound:
                     self.collectIIMInfo(fh)
             else:
-                logger.warn('No IPTC data found in %s', fobj)
+                logger.warning('No IPTC data found in %s', fobj)
 
     def _filepos(self, fh):
         """For debugging, return what position in the file we are."""
@@ -726,7 +726,7 @@ class IPTCInfo:
             logger.info("File is JPEG, proceeding with JpegScan")
             return self.jpegScan(fh)
         else:
-            logger.warn("File not a JPEG, trying blindScan")
+            logger.warning("File not a JPEG, trying blindScan")
             return self.blindScan(fh)
 
     c_marker_err = {0: "Marker scan failed",
@@ -762,7 +762,7 @@ class IPTCInfo:
                 err = "jpeg_skip_variable failed"
             if err is not None:
                 self.error = err
-                logger.warn(err)
+                logger.warning(err)
                 return None
 
         # If were's here, we must have found the right marker.
@@ -786,7 +786,7 @@ class IPTCInfo:
             try:
                 temp = read_exactly(fh, 1)
             except EOFException:
-                logger.warn("BlindScan: hit EOF while scanning")
+                logger.warning("BlindScan: hit EOF while scanning")
                 return None
             # look for tag identifier 0x1c
             if ord3(temp) == 0x1c:
@@ -800,7 +800,7 @@ class IPTCInfo:
                         try:
                             cs = unpack('!H', temp)[0]
                         except Exception:  # TODO better exception
-                            logger.warn('WARNING: problems with charset recognition (%r)', temp)
+                            logger.warning('WARNING: problems with charset recognition (%r)', temp)
                             cs = None
                         if cs in c_charset:
                             self.inp_charset = c_charset[cs]
@@ -855,7 +855,7 @@ class IPTCInfo:
                 try:
                     value = str(value, encoding=self.inp_charset, errors='strict')
                 except Exception:  # TODO better exception
-                    logger.warn('Data "%r" is not in encoding %s!', value, self.inp_charset)
+                    logger.warning('Data "%r" is not in encoding %s!', value, self.inp_charset)
                     value = str(value, encoding=self.inp_charset, errors='replace')
 
             # try to extract first into _listdata (keywords, categories)
@@ -903,7 +903,7 @@ class IPTCInfo:
                 continue
 
             if not (isinstance(dataset, int) and dataset in c_datasets):
-                logger.warn("packedIIMData: illegal dataname '%s' (%d)", dataset, dataset)
+                logger.warning("packedIIMData: illegal dataname '%s' (%d)", dataset, dataset)
                 continue
 
             logger.debug('packedIIMData %02X: %r -> %r', dataset, value, self._enc(value))
