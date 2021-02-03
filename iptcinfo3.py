@@ -693,7 +693,9 @@ class IPTCInfo:
             os.unlink(tmpfn)
         else:
             tmpfh.close()
-            if os.path.exists(newfile):
+            if os.path.exists(newfile) and options is not None and 'overwrite' in options:
+                os.unlink(newfile)
+            elif os.path.exists(newfile):
                 shutil.move(newfile, "{file}~".format(file=newfile))
             shutil.move(tmpfn, newfile)
         return True
