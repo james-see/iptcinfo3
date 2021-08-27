@@ -444,6 +444,7 @@ def collect_adobe_parts(data):
 # are in %listdatasets below.
 c_datasets = {
     # 0: 'record version',    # skip -- binary data
+    1: 'creator',
     5: 'object name',
     7: 'edit status',
     8: 'editorial update',
