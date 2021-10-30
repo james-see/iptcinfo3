@@ -16,3 +16,6 @@ __pycache__
 # ide stuff
 .vscode
 .vscode/*
+
+# pipfile stuff
+Pipfile.lock
