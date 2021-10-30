@@ -24,6 +24,7 @@ import shutil
 import sys
 import tempfile
 from struct import pack, unpack
+import json
 
 __version__ = '2.1.4'
 __author__ = 'Gulácsi, Tamás'
@@ -771,7 +772,7 @@ class IPTCInfo:
         # Now blindScan through the data.
         return self.blindScan(fh, MAX=jpeg_get_variable_length(fh))
 
-    def blindScan(self, fh, MAX=8192):
+    def blindScan(self, fh, MAX=819200):
         """Scans blindly to first IIM Record 2 tag in the file. This
         method may or may not work on any arbitrary file type, but it
         doesn't hurt to check. We expect to see this tag within the first
@@ -779,7 +780,7 @@ class IPTCInfo:
         depending on how other programs choose to store IIM.)"""
 
         offset = 0
-        # keep within first 8192 bytes
+        # keep within first 819200 bytes
         # NOTE: this may need to change
         logger.debug('blindScan: starting scan, max length %d', MAX)
 
@@ -956,7 +957,16 @@ class IPTCInfo:
 
 
 if __name__ == '__main__':  # pragma: no cover
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.ERROR)
     if len(sys.argv) > 1:
         info = IPTCInfo(sys.argv[1])
-        print(info)
+        if info.__dict__ != '':
+            for k, v in info.__dict__.items():
+                if k == '_data':
+                    print(k)
+                    for key, value in v.items():
+                        if type(value) == list:
+                            print(key, [x.decode() for x in value])
+                            [print(x.decode()) for x in value]
+                        print(key, value)
+                print(k, v)
