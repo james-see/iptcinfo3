@@ -1,3 +1,5 @@
+Updating builds to target 3.9.7
+
 2.1: Fixes merged to save modified IPTC info images
 
 1.9.5-8: https://bitbucket.org/gthomas/iptcinfo/issue/4/file-permissions-for-changed-files-are-not - copy original file's permission bits on save/saveAs
