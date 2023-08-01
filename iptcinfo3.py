@@ -638,7 +638,7 @@ class IPTCInfo:
         """Saves Jpeg with IPTC data to a given file name."""
         with smart_open(self._fobj, 'rb') as fh:
             if not file_is_jpeg(fh):
-                logger.error('Source file %s is not a Jpeg.' % self._fob)
+                logger.error('Source file %s is not a Jpeg.' % self._fobj)
                 return None
 
             jpeg_parts = jpeg_collect_file_parts(fh)
