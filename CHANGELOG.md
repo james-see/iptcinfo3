@@ -15,6 +15,13 @@
 - **Issue #38**: Verified backup file behavior (use `options={'overwrite': True}` to avoid ~ files)
 - Better error handling and logging throughout
 
+### Build System Modernization
+- Migrated from legacy `setup.py` to modern `pyproject.toml`
+- Now uses `uv` and `hatchling` for building (PEP 517/518 compliant)
+- Simplified setup.py to minimal backward compatibility shim
+- Added comprehensive publishing guide (`PUBLISHING.md`)
+- Supports Python 3.8 through 3.13
+
 ### Notes
 - **Issue #39, #41**: Ready for PyPI release with all fixes from master branch
 

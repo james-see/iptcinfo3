@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "IPTCInfo3"
+version = "2.2.0"
+description = "Extract and modify IPTC metadata from JPEG images"
+readme = "README.rst"
+license = { text = "Artistic-1.0 OR GPL-1.0-or-later" }
+authors = [
+    { name = "Tamas Gulacsi", email = "gthomas@fw.hu" },
+]
+maintainers = [
+    { name = "James Campbell", email = "jc@normail.co" },
+]
+keywords = ["iptc", "metadata", "jpeg", "exif", "photography"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Artistic License",
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.8"
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/jamesacampbell/iptcinfo3"
+Repository = "https://github.com/jamesacampbell/iptcinfo3"
+Issues = "https://github.com/jamesacampbell/iptcinfo3/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-watch>=4.2",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "iptcinfo3.py",
+    "README.rst",
+    "CHANGELOG.md",
+    "LICENSE",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["iptcinfo3.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+
+[tool.coverage.run]
+branch = true
+source = ["."]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP"]
+ignore = ["E501"]  # Line length handled by formatter
+

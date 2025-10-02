@@ -23,6 +23,23 @@ programs -- pull it back out. You can use the information directly in
 Python programs, export it to XML, or even export SQL statements ready
 to be fed into a database.
 
+Installation
+------------
+
+Install from PyPI::
+
+    pip install IPTCInfo3
+
+Or with uv::
+
+    uv pip install IPTCInfo3
+
+Requirements
+------------
+
+- Python 3.8 or higher
+- No external dependencies required
+
 Usage
 -----
 
