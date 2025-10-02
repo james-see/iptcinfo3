@@ -11,7 +11,8 @@
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the same terms as Python itself.
+# it under the terms of the Artistic License or the GNU General Public
+# License (GPL). You may choose either license.
 #
 # VERSION = '1.9';
 """
@@ -26,7 +27,7 @@ import tempfile
 from struct import pack, unpack
 import json
 
-__version__ = '2.1.4'
+__version__ = '2.2.0'
 __author__ = 'Gulácsi, Tamás'
 __updated_by__ = 'Campbell, James'
 
@@ -481,7 +482,7 @@ c_datasets = {
     101: 'country/primary location name',
     103: 'original transmission reference',
     105: 'headline',
-    110: 'credit',
+    110: 'credit line',  # Updated from 'credit' to 'credit line' per IPTC Core 1.1
     115: 'source',
     116: 'copyright notice',
     118: 'contact',
@@ -537,6 +538,12 @@ class IPTCData(dict):
             return key
         elif isinstance(key, str) and key.lower() in c_datasets_r:
             return c_datasets_r[key.lower()]
+        # Backward compatibility: 'credit' is now 'credit line' per IPTC Core 1.1
+        elif isinstance(key, str) and key.lower() == 'credit':
+            return 110
+        # Alias for compatibility with gThumb/exiftool
+        elif isinstance(key, str) and key.lower() == 'destination':
+            return 103  # Maps to 'original transmission reference'
         elif key.startswith(cls.c_cust_pre) and key[len(cls.c_cust_pre):].isdigit():
             # example: nonstandard_69 -> 69
             return int(key[len(cls.c_cust_pre):])
@@ -606,6 +613,7 @@ class IPTCInfo:
             'contact': [],
         })
         self._fobj = fobj
+        self._force = force
         if duck_typed(fobj, 'read'):  # DELETEME
             self._filename = None
         else:
@@ -765,7 +773,11 @@ class IPTCInfo:
                 err = "jpeg_skip_variable failed"
             if err is not None:
                 self.error = err
-                logger.warning(err)
+                # When force=True, log as INFO instead of WARNING since we expect no IPTC data
+                if self._force:
+                    logger.info(err)
+                else:
+                    logger.warning(err)
                 return None
 
         # If were's here, we must have found the right marker.
@@ -800,15 +812,32 @@ class IPTCInfo:
                     # found character set's record!
                     try:
                         temp = read_exactly(fh, jpeg_get_variable_length(fh))
-                        try:
-                            cs = unpack('!H', temp)[0]
-                        except Exception:  # TODO better exception
-                            logger.warning('WARNING: problems with charset recognition (%r)', temp)
-                            cs = None
-                        if cs in c_charset:
-                            self.inp_charset = c_charset[cs]
-                        logger.info("BlindScan: found character set '%s' at offset %d",
-                                    self.inp_charset, offset)
+                        cs = None
+                        # Check for ISO 2022 escape sequence (starts with ESC 0x1b)
+                        if len(temp) >= 3 and ord3(temp[0]) == 0x1b:
+                            # Parse ISO 2022 escape sequences
+                            # ESC % G = UTF-8
+                            if temp == b'\x1b%G':
+                                self.inp_charset = 'utf_8'
+                            # ESC % / @ = UTF-16 (not commonly used)
+                            elif temp == b'\x1b%/@':
+                                self.inp_charset = 'utf_16'
+                            else:
+                                logger.debug(
+                                    "BlindScan: unknown ISO 2022 charset escape sequence %r",
+                                    temp)
+                        else:
+                            # Try legacy numeric charset encoding
+                            try:
+                                cs = unpack('!H', temp)[0]
+                                if cs in c_charset:
+                                    self.inp_charset = c_charset[cs]
+                            except Exception:
+                                logger.debug('BlindScan: could not parse charset from %r', temp)
+
+                        if self.inp_charset:
+                            logger.info("BlindScan: found character set '%s' at offset %d",
+                                        self.inp_charset, offset)
                     except EOFException:
                         pass
 
@@ -902,7 +931,18 @@ class IPTCInfo:
         LOGDBG.debug('out=%s', hex_dump(out))
         # Iterate over data sets
         for dataset, value in self._data.items():
-            if len(value) == 0:
+            # Skip None, empty strings, empty lists, and NaN values
+            if value is None:
+                continue
+            # Handle float/int that might be NaN
+            if isinstance(value, (float, int)):
+                import math
+                if isinstance(value, float) and math.isnan(value):
+                    continue
+                # Convert numeric values to strings
+                value = str(value)
+            # Check length for strings and lists
+            if hasattr(value, '__len__') and len(value) == 0:
                 continue
 
             if not (isinstance(dataset, int) and dataset in c_datasets):
