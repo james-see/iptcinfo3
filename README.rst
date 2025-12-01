@@ -9,7 +9,7 @@ Ported from Josh Carter's Perl IPTCInfo-1.9.pm by Tamas Gulacsi
 
 Ever wish you add information to your photos like a caption, the place
 you took it, the date, and perhaps even keywords and categories? You
-already can. The International Press Telecommunications Council (IPTC)
+already can. The `International Press Telecommunications Council (IPTC) <https://en.wikipedia.org/wiki/International_Press_Telecommunications_Council>`_
 defines a format for exchanging meta-information in news content, and
 that includes photographs. You can embed all kinds of information in
 your images. The trick is putting it to use.
