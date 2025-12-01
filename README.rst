@@ -21,6 +21,8 @@ programs -- pull it back out. You can use the information directly in
 Python programs, export it to XML, or even export SQL statements ready
 to be fed into a database.
 
+Wikidata item https://www.wikidata.org/wiki/Q137179516
+
 Installation
 ------------
 
