@@ -68,3 +68,5 @@ Lists for keywords, so you can just append!
 Save new info to file
 ``info.save()``
 ``info.save_as('very_meta.jpg')``
+
+For real life usage example see https://gitlab.com/vitaly-zdanevich/upload_to_commons_with_categories_from_iptc/-/blob/master/upload_to_commons_with_categories_from_iptc.py
