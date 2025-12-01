@@ -32,6 +32,8 @@ Or with uv::
 
     uv pip install IPTCInfo3
 
+On Gentoo Linux: on `gentoo-zh overlay <https://github.com/microcai/gentoo-zh/tree/master/dev-python/iptcinfo3>`_.
+
 Requirements
 ------------
 
