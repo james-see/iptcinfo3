@@ -14,7 +14,6 @@
 # it under the terms of the Artistic License or the GNU General Public
 # License (GPL). You may choose either license.
 #
-# VERSION = '1.9';
 """
 IPTCInfo - Python module for extracting and modifying IPTC image meta-data
 """
@@ -27,7 +26,7 @@ import tempfile
 from struct import pack, unpack
 import json
 
-__version__ = '2.2.0'
+__version__ = '2.3.0'
 __author__ = 'Gulácsi, Tamás'
 __updated_by__ = 'Campbell, James'
 
@@ -524,6 +523,17 @@ c_charset = {100: 'iso8859_1', 101: 'iso8859_2', 109: 'iso8859_3',
 c_charset_r = {v: k for k, v in c_charset.items()}
 
 
+class UniqueList(list):
+    """A list that prevents duplicate values on append/extend."""
+    def append(self, value):
+        if value not in self:
+            super().append(value)
+
+    def extend(self, values):
+        for v in values:
+            self.append(v)
+
+
 class IPTCData(dict):
     """Dict with int/string keys from c_listdatanames"""
     def __init__(self, diction={}, *args, **kwds):
@@ -608,9 +618,9 @@ class IPTCInfo:
 
     def __init__(self, fobj, force=False, inp_charset=None, out_charset=None):
         self._data = IPTCData({
-            'supplemental category': [],
-            'keywords': [],
-            'contact': [],
+            'supplemental category': UniqueList(),
+            'keywords': UniqueList(),
+            'contact': UniqueList(),
         })
         self._fobj = fobj
         self._force = force
@@ -956,10 +966,11 @@ class IPTCInfo:
                 out.append(pack("!BBBH", tag, record, dataset, len(value)))
                 out.append(value)
             else:
+                seen = set()
                 for v in map(bytes, value):
-                    if v is None or len(v) == 0:
+                    if v is None or len(v) == 0 or v in seen:
                         continue
-
+                    seen.add(v)
                     out.append(pack("!BBBH", tag, record, dataset, len(v)))
                     out.append(v)
 

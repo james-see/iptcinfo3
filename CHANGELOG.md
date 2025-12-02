@@ -1,3 +1,15 @@
+## 2.3.0 (2025-12-02)
+
+### Bug Fixes
+- **Issue #50**: Fixed keywords and other list fields to prevent duplicate values (deduplicates on append and save)
+- **Issue #45**: Removed outdated VERSION = 1.9 comment from code
+
+### New Features
+- **Issue #44**: Added LICENSE file with dual Artistic-1.0 / GPL-1.0+ license
+- Added `UniqueList` class for list fields that automatically prevents duplicates
+
+---
+
 ## 2.2.0 (2025-10-02)
 
 ### Bug Fixes

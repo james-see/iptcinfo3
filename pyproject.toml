@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "IPTCInfo3"
-version = "2.2.0"
+version = "2.3.0"
 description = "Extract and modify IPTC metadata from JPEG images"
 readme = "README.rst"
 license = { text = "Artistic-1.0 OR GPL-1.0-or-later" }
