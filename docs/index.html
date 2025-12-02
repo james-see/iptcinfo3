@@ -250,7 +250,7 @@
         <p>Extract and modify IPTC metadata from JPEG images with Python 3</p>
         <div>
             <span class="badge">Python 3.8+</span>
-            <span class="badge">v2.2.0</span>
+            <span class="badge">v2.3.0</span>
             <span class="badge">Zero Dependencies</span>
         </div>
     </header>
@@ -418,7 +418,22 @@ info = IPTCInfo('photo.jpg', inp_charset='utf8', out_charset='utf8')
         </section>
 
         <section id="changelog">
-            <h2>What's New in v2.2.0</h2>
+            <h2>What's New in v2.3.0</h2>
+            <div class="changelog">
+                <h4>🐛 Bug Fixes</h4>
+                <ul>
+                    <li>Fixed keywords and list fields to prevent duplicate values - deduplicates on append and save</li>
+                    <li>Removed outdated VERSION = 1.9 comment from code</li>
+                </ul>
+
+                <h4>✨ New Features</h4>
+                <ul>
+                    <li>Added LICENSE file with dual Artistic-1.0 / GPL-1.0+ license</li>
+                    <li>Added <code>UniqueList</code> class for list fields that automatically prevents duplicates</li>
+                </ul>
+            </div>
+
+            <h2>Previous: v2.2.0</h2>
             <div class="changelog">
                 <h4>🐛 Bug Fixes</h4>
                 <ul>
@@ -516,7 +531,7 @@ info.save()</code></pre>
             <a href="https://github.com/jamesacampbell/iptcinfo3/issues">Issues</a>
         </p>
         <p style="margin-top: 1rem; opacity: 0.7; font-size: 0.9rem;">
-            © 2024 IPTCInfo3 Contributors. Documentation generated for v2.2.0
+            © 2024 IPTCInfo3 Contributors. Documentation generated for v2.3.0
         </p>
     </footer>
 </body>
