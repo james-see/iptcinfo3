@@ -26,7 +26,7 @@ import tempfile
 from struct import pack, unpack
 import json
 
-__version__ = '2.3.2'
+__version__ = '2.4.0'
 __author__ = 'Gulácsi, Tamás'
 __updated_by__ = 'Campbell, James'
 
@@ -445,6 +445,8 @@ def collect_adobe_parts(data):
 # are in %listdatasets below.
 c_datasets = {
     # 0: 'record version',    # skip -- binary data
+    3: 'object type reference',
+    4: 'object attribute reference',
     5: 'object name',
     7: 'edit status',
     8: 'editorial update',
@@ -492,6 +494,23 @@ c_datasets = {
     130: 'image type',
     131: 'image orientation',
     135: 'language identifier',
+    150: 'audio type',
+    151: 'audio sampling rate',
+    152: 'audio sampling resolution',
+    153: 'audio duration',
+    154: 'audio outcue',
+    184: 'job id',
+    185: 'master document id',
+    186: 'short document id',
+    187: 'unique document id',
+    188: 'owner id',
+    221: 'prefs',  # PhotoMechanic preferences
+    225: 'classify state',
+    228: 'similarity index',
+    230: 'document notes',
+    231: 'document history',
+    232: 'exif camera info',
+    255: 'catalog sets',  # written by iView MediaPro
     200: 'custom1',  # These are NOT STANDARD, but are used by
     201: 'custom2',  # Fotostation. Use at your own risk. They're
     202: 'custom3',  # here in case you need to store some special
