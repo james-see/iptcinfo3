@@ -3,320 +3,532 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="IPTCInfo3 - Extract and modify IPTC metadata from JPEG images with Python 3">
-    <meta name="keywords" content="IPTC, metadata, JPEG, Python, photography, exif">
-    <title>IPTCInfo3 - IPTC Metadata for Python 3</title>
+    <meta name="description" content="IPTCInfo3 - Read and write IPTC metadata in JPEG images with Python. Zero dependencies, Python 3.10–3.15.">
+    <meta name="keywords" content="IPTC, metadata, JPEG, Python, photography, exif, IIM">
+    <meta property="og:title" content="IPTCInfo3 - IPTC Metadata for Python">
+    <meta property="og:description" content="Read and write IPTC photo metadata in Python. Zero dependencies. Python 3.10–3.15.">
+    <meta property="og:type" content="website">
+    <title>IPTCInfo3 - IPTC Metadata for Python</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         :root {
             --primary: #2563eb;
             --primary-dark: #1e40af;
-            --bg-light: #f8fafc;
-            --bg-code: #1e293b;
+            --accent: #10b981;
+            --bg: #ffffff;
+            --bg-soft: #f8fafc;
+            --bg-code: #0f172a;
+            --code-fg: #e2e8f0;
             --text: #1e293b;
-            --text-light: #64748b;
+            --text-muted: #64748b;
             --border: #e2e8f0;
-            --success: #10b981;
+            --card: #ffffff;
+            --shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+            --radius: 0.75rem;
         }
-        
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0b1220;
+                --bg-soft: #111a2e;
+                --text: #e2e8f0;
+                --text-muted: #94a3b8;
+                --border: #1e2a44;
+                --card: #111a2e;
+                --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            }
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
+            line-height: 1.65;
             color: var(--text);
-            background: white;
+            background: var(--bg);
         }
-        
+
+        /* ---------- nav ---------- */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: color-mix(in srgb, var(--bg) 85%, transparent);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        nav .inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0.75rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        nav .brand {
+            font-weight: 800;
+            font-size: 1.1rem;
+            text-decoration: none;
+            color: var(--text);
+            margin-right: auto;
+        }
+
+        nav .brand span {
+            color: var(--primary);
+        }
+
+        nav a.link {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 0.925rem;
+            font-weight: 500;
+        }
+
+        nav a.link:hover {
+            color: var(--primary);
+        }
+
+        @media (max-width: 720px) {
+            nav .inner {
+                gap: 1rem;
+                overflow-x: auto;
+            }
+        }
+
+        /* ---------- hero ---------- */
         header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            background:
+                radial-gradient(60rem 30rem at 15% -10%, rgba(37, 99, 235, 0.35), transparent 60%),
+                radial-gradient(50rem 26rem at 85% 0%, rgba(16, 185, 129, 0.28), transparent 60%),
+                linear-gradient(135deg, #1e3a8a 0%, #1e40af 55%, #0f766e 130%);
             color: white;
-            padding: 3rem 2rem;
+            padding: 4.5rem 2rem 3.5rem;
             text-align: center;
         }
-        
+
         header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            font-weight: 700;
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.75rem;
         }
-        
-        header p {
-            font-size: 1.2rem;
-            opacity: 0.95;
+
+        header p.tagline {
+            font-size: 1.25rem;
+            opacity: 0.92;
+            max-width: 640px;
+            margin: 0 auto;
         }
-        
+
+        .badges {
+            margin-top: 1.25rem;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
         .badge {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
-            background: rgba(255,255,255,0.2);
-            border-radius: 1rem;
-            font-size: 0.875rem;
-            margin: 0.5rem 0.25rem 0;
+            padding: 0.3rem 0.85rem;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
         }
-        
+
+        .badge.latest {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .install-line {
+            display: inline-block;
+            margin-top: 1.75rem;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius);
+            padding: 0.8rem 1.4rem;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 1rem;
+        }
+
+        .install-line .prompt {
+            color: var(--accent);
+            user-select: none;
+        }
+
+        /* ---------- layout ---------- */
         .container {
-            max-width: 1200px;
+            max-width: 960px;
             margin: 0 auto;
             padding: 2rem;
         }
-        
-        .hero {
-            text-align: center;
-            padding: 3rem 0;
-        }
-        
-        .buttons {
+
+        .cta-row {
             display: flex;
             gap: 1rem;
             justify-content: center;
             flex-wrap: wrap;
-            margin-top: 2rem;
+            margin: 2.5rem 0 0;
         }
-        
+
         .btn {
             display: inline-block;
             padding: 0.75rem 2rem;
             background: var(--primary);
             color: white;
             text-decoration: none;
-            border-radius: 0.5rem;
+            border-radius: var(--radius);
             font-weight: 600;
-            transition: all 0.2s;
+            transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
             border: 2px solid transparent;
         }
-        
+
         .btn:hover {
             background: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
         }
-        
+
         .btn-secondary {
-            background: white;
+            background: transparent;
             color: var(--primary);
             border: 2px solid var(--primary);
         }
-        
+
         .btn-secondary:hover {
-            background: var(--bg-light);
+            background: var(--primary);
+            color: white;
         }
-        
+
         section {
-            margin: 4rem 0;
+            margin: 3.5rem 0;
+            scroll-margin-top: 4.5rem;
         }
-        
+
         h2 {
-            font-size: 2rem;
+            font-size: 1.75rem;
+            letter-spacing: -0.01em;
             margin-bottom: 1rem;
-            color: var(--text);
+            padding-bottom: 0.5rem;
             border-bottom: 3px solid var(--primary);
             display: inline-block;
-            padding-bottom: 0.5rem;
         }
-        
+
         h3 {
-            font-size: 1.5rem;
-            margin: 2rem 0 1rem;
-            color: var(--text);
+            font-size: 1.25rem;
+            margin: 1.75rem 0 0.75rem;
         }
-        
+
+        p + p {
+            margin-top: 0.75rem;
+        }
+
+        a {
+            color: var(--primary);
+        }
+
+        /* ---------- features ---------- */
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.25rem;
+            margin-top: 1.5rem;
         }
-        
+
         .feature {
-            background: var(--bg-light);
-            padding: 2rem;
-            border-radius: 0.5rem;
-            border-left: 4px solid var(--primary);
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            border-top: 4px solid var(--primary);
+            box-shadow: var(--shadow);
+            transition: transform 0.15s;
         }
-        
+
+        .feature:hover {
+            transform: translateY(-3px);
+        }
+
         .feature h3 {
-            margin-top: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            margin: 0 0 0.5rem;
+            font-size: 1.05rem;
         }
-        
+
+        .feature p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
         .feature-icon {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
+            margin-right: 0.4rem;
         }
-        
+
+        /* ---------- code ---------- */
         pre {
             background: var(--bg-code);
-            color: #e2e8f0;
-            padding: 1.5rem;
-            border-radius: 0.5rem;
+            color: var(--code-fg);
+            padding: 1.25rem 1.5rem;
+            border-radius: var(--radius);
             overflow-x: auto;
             margin: 1rem 0;
-            border-left: 4px solid var(--primary);
+            border: 1px solid rgba(148, 163, 184, 0.15);
         }
-        
+
         code {
             font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-            font-size: 0.9rem;
+            font-size: 0.875rem;
         }
-        
+
         .inline-code {
-            background: var(--bg-light);
-            padding: 0.2rem 0.4rem;
-            border-radius: 0.25rem;
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            padding: 0.15rem 0.45rem;
+            border-radius: 0.3rem;
             font-family: monospace;
-            color: var(--primary-dark);
-            font-size: 0.9em;
+            font-size: 0.85em;
+            white-space: nowrap;
         }
-        
+
+        /* ---------- tables ---------- */
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin: 1rem 0;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 1rem 0;
+            font-size: 0.95rem;
         }
-        
+
         th, td {
-            padding: 0.75rem;
+            padding: 0.7rem 1rem;
             text-align: left;
             border-bottom: 1px solid var(--border);
         }
-        
+
+        tbody tr:last-child th,
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
         th {
-            background: var(--bg-light);
+            background: var(--bg-soft);
             font-weight: 600;
+        }
+
+        tbody tr:hover {
+            background: var(--bg-soft);
+        }
+
+        .new-dot {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: var(--accent);
+            color: white;
+            border-radius: 999px;
+            padding: 0.1rem 0.5rem;
+            margin-left: 0.4rem;
+            vertical-align: middle;
+        }
+
+        /* ---------- changelog ---------- */
+        .release {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 1.5rem 1.75rem;
+            border-radius: var(--radius);
+            margin: 1.25rem 0;
+            box-shadow: var(--shadow);
+        }
+
+        .release h3 {
+            margin: 0 0 0.75rem;
+        }
+
+        .release h4 {
+            color: var(--accent);
+            margin: 1rem 0 0.25rem;
+            font-size: 1rem;
+        }
+
+        .release ul {
+            margin-left: 1.25rem;
+        }
+
+        .release li {
+            margin: 0.4rem 0;
+            color: var(--text-muted);
+        }
+
+        .release li strong,
+        .release li code {
             color: var(--text);
         }
-        
-        .changelog {
-            background: var(--bg-light);
-            padding: 2rem;
-            border-radius: 0.5rem;
-            margin: 2rem 0;
+
+        /* ---------- misc ---------- */
+        .resource-list {
+            list-style: none;
+            padding: 0;
+            display: grid;
+            gap: 0.6rem;
         }
-        
-        .changelog h4 {
-            color: var(--success);
-            margin-top: 1rem;
+
+        .resource-list a {
+            text-decoration: none;
+            font-weight: 500;
         }
-        
-        .changelog ul {
-            margin-left: 1.5rem;
-            margin-top: 0.5rem;
+
+        .resource-list a:hover {
+            text-decoration: underline;
         }
-        
-        .changelog li {
-            margin: 0.5rem 0;
-        }
-        
+
         footer {
             background: var(--bg-code);
-            color: white;
+            color: #cbd5e1;
             text-align: center;
-            padding: 2rem;
+            padding: 2.5rem 2rem;
             margin-top: 4rem;
         }
-        
+
         footer a {
-            color: var(--primary);
+            color: #93c5fd;
             text-decoration: none;
         }
-        
+
         footer a:hover {
             text-decoration: underline;
         }
-        
-        @media (max-width: 768px) {
+
+        footer .fine {
+            margin-top: 1rem;
+            opacity: 0.7;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 720px) {
             header h1 {
-                font-size: 2rem;
+                font-size: 2.1rem;
             }
-            
-            .buttons {
-                flex-direction: column;
+
+            header p.tagline {
+                font-size: 1.05rem;
             }
-            
+
+            .container {
+                padding: 1.25rem;
+            }
+
             .btn {
                 width: 100%;
+                text-align: center;
             }
         }
     </style>
 </head>
 <body>
+    <nav>
+        <div class="inner">
+            <a class="brand" href="#">📸 <span>IPTCInfo3</span></a>
+            <a class="link" href="#features">Features</a>
+            <a class="link" href="#quickstart">Quick Start</a>
+            <a class="link" href="#fields">Fields</a>
+            <a class="link" href="#changelog">Changelog</a>
+            <a class="link" href="https://github.com/james-see/iptcinfo3">GitHub</a>
+        </div>
+    </nav>
+
     <header>
-        <h1>📸 IPTCInfo3</h1>
-        <p>Extract and modify IPTC metadata from JPEG images with Python 3</p>
-        <div>
-            <span class="badge">Python 3.8+</span>
-            <span class="badge">v2.3.0</span>
+        <h1>IPTCInfo3</h1>
+        <p class="tagline">Read and write IPTC photo metadata in Python. Pure Python, zero dependencies, tested on every release from 3.10 to 3.15.</p>
+        <div class="badges">
+            <span class="badge latest">v2.4.0</span>
+            <span class="badge">Python 3.10–3.15</span>
             <span class="badge">Zero Dependencies</span>
+            <span class="badge">70+ IPTC Fields</span>
+        </div>
+        <div>
+            <span class="install-line"><span class="prompt">$</span> pip install IPTCInfo3</span>
         </div>
     </header>
 
     <div class="container">
-        <div class="hero">
-            <div class="buttons">
-                <a href="https://pypi.org/project/IPTCInfo3/" class="btn">📦 Install from PyPI</a>
-                <a href="https://github.com/jamesacampbell/iptcinfo3" class="btn btn-secondary">⭐ View on GitHub</a>
-            </div>
+        <div class="cta-row">
+            <a href="https://pypi.org/project/IPTCInfo3/" class="btn">📦 Install from PyPI</a>
+            <a href="https://github.com/james-see/iptcinfo3" class="btn btn-secondary">⭐ View on GitHub</a>
         </div>
 
         <section id="about">
             <h2>About</h2>
             <p>
-                IPTCInfo3 is a Python library for reading and modifying IPTC metadata in JPEG images. 
-                The International Press Telecommunications Council (IPTC) defines a format for exchanging 
-                meta-information in news content, including photographs. This library lets you embed and 
-                extract information like captions, keywords, copyright notices, and more.
+                IPTCInfo3 is a Python library for reading and modifying IPTC metadata in JPEG images.
+                The International Press Telecommunications Council (IPTC) defines a format for exchanging
+                meta-information in news content, including photographs. This library lets you embed and
+                extract information like captions, keywords, copyright notices, creator credits, document
+                IDs, and more — no external dependencies required.
             </p>
         </section>
 
         <section id="installation">
             <h2>Installation</h2>
-            <p>Install IPTCInfo3 using pip or uv:</p>
             <pre><code># Using pip
 pip install IPTCInfo3
 
 # Using uv (recommended)
 uv pip install IPTCInfo3</code></pre>
-            <p><strong>Requirements:</strong> Python 3.8 or higher, no external dependencies required.</p>
+            <p><strong>Requirements:</strong> Python 3.10 or higher, no external dependencies required.</p>
         </section>
 
         <section id="features">
             <h2>Features</h2>
             <div class="features">
                 <div class="feature">
-                    <h3><span class="feature-icon">🔍</span> Read Metadata</h3>
-                    <p>Extract IPTC metadata from JPEG images including keywords, captions, copyright, and more.</p>
+                    <h3><span class="feature-icon">🔍</span> Read &amp; Write Metadata</h3>
+                    <p>Extract and modify IPTC metadata — keywords, captions, copyright, creator, document IDs — programmatically.</p>
                 </div>
                 <div class="feature">
-                    <h3><span class="feature-icon">✏️</span> Modify Metadata</h3>
-                    <p>Add, update, or remove IPTC information in your images programmatically.</p>
+                    <h3><span class="feature-icon">🐍</span> Modern Python</h3>
+                    <p>Tested on Python 3.10 through 3.15 on every commit via a CI matrix. Drops EOL interpreters.</p>
                 </div>
                 <div class="feature">
                     <h3><span class="feature-icon">🌐</span> Unicode Support</h3>
-                    <p>Full support for international characters with proper charset handling including ISO 2022 escape sequences.</p>
+                    <p>International characters with proper charset handling, including ISO 2022 escape sequences and UTF-8.</p>
                 </div>
                 <div class="feature">
-                    <h3><span class="feature-icon">🎯</span> IPTC Core 1.1</h3>
-                    <p>Support for modern IPTC Core 1.1 fields including 'credit line' and other standard metadata.</p>
+                    <h3><span class="feature-icon">🎯</span> 70+ IPTC Fields</h3>
+                    <p>Full IIM Application Record coverage: core photo fields plus audio, document ID, and workflow fields.</p>
                 </div>
                 <div class="feature">
-                    <h3><span class="feature-icon">🛡️</span> Safe Operations</h3>
-                    <p>Backup files automatically created during save operations (configurable).</p>
+                    <h3><span class="feature-icon">🤝</span> Friendly Aliases</h3>
+                    <p><code class="inline-code">creator</code>, <code class="inline-code">credit</code>, and <code class="inline-code">destination</code> work out of the box, matching exiftool and gThumb conventions.</p>
                 </div>
                 <div class="feature">
                     <h3><span class="feature-icon">⚡</span> Zero Dependencies</h3>
-                    <p>Pure Python implementation with no external dependencies required.</p>
+                    <p>Pure-Python implementation using only the standard library. No duplicate list entries, safe saves with optional backups.</p>
                 </div>
             </div>
         </section>
 
         <section id="quickstart">
             <h2>Quick Start</h2>
-            
+
             <h3>Reading IPTC Data</h3>
             <pre><code>from iptcinfo3 import IPTCInfo
 
@@ -327,7 +539,7 @@ info = IPTCInfo('photo.jpg')
 print(info['caption/abstract'])
 print(info['keywords'])
 print(info['copyright notice'])
-print(info['by-line'])</code></pre>
+print(info['creator'])   # alias for 'by-line'</code></pre>
 
             <h3>Writing IPTC Data</h3>
             <pre><code>from iptcinfo3 import IPTCInfo
@@ -338,8 +550,8 @@ info = IPTCInfo('photo.jpg', force=True)
 # Set metadata
 info['caption/abstract'] = 'A beautiful sunset over the mountains'
 info['keywords'] = ['sunset', 'mountains', 'landscape']
-info['copyright notice'] = '© 2024 Your Name'
-info['credit line'] = 'Your Photography Studio'
+info['copyright notice'] = '© 2026 Your Name'
+info['creator'] = 'Your Name'
 
 # Save changes
 info.save()
@@ -351,116 +563,134 @@ info.save_as('photo_with_metadata.jpg')</code></pre>
             <pre><code># Specify input and output charsets
 info = IPTCInfo('photo.jpg', inp_charset='utf8', out_charset='utf8')
 
-# The library now properly handles ISO 2022 escape sequences
-# including UTF-8 (ESC % G) automatically</code></pre>
+# ISO 2022 escape sequences (including UTF-8 ESC % G)
+# are recognised automatically</code></pre>
         </section>
 
         <section id="fields">
             <h2>Supported IPTC Fields</h2>
-            <p>IPTCInfo3 supports all standard IPTC IIM fields. Here are some commonly used ones:</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Field Name</th>
-                        <th>Description</th>
-                        <th>Type</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><code class="inline-code">object name</code></td>
-                        <td>Title or name of the image</td>
-                        <td>String</td>
-                    </tr>
-                    <tr>
-                        <td><code class="inline-code">caption/abstract</code></td>
-                        <td>Description of the image content</td>
-                        <td>String</td>
-                    </tr>
-                    <tr>
-                        <td><code class="inline-code">keywords</code></td>
-                        <td>Searchable keywords</td>
-                        <td>List</td>
-                    </tr>
-                    <tr>
-                        <td><code class="inline-code">credit line</code></td>
-                        <td>Credit/provider information (IPTC Core 1.1)</td>
-                        <td>String</td>
-                    </tr>
-                    <tr>
-                        <td><code class="inline-code">copyright notice</code></td>
-                        <td>Copyright information</td>
-                        <td>String</td>
-                    </tr>
-                    <tr>
-                        <td><code class="inline-code">by-line</code></td>
-                        <td>Creator/photographer name</td>
-                        <td>String</td>
-                    </tr>
-                    <tr>
-                        <td><code class="inline-code">city</code></td>
-                        <td>City where photo was taken</td>
-                        <td>String</td>
-                    </tr>
-                    <tr>
-                        <td><code class="inline-code">country/primary location name</code></td>
-                        <td>Country name</td>
-                        <td>String</td>
-                    </tr>
-                    <tr>
-                        <td><code class="inline-code">destination</code></td>
-                        <td>Destination/transmission reference</td>
-                        <td>String</td>
-                    </tr>
-                </tbody>
-            </table>
-            <p>See the <a href="https://github.com/jamesacampbell/iptcinfo3">GitHub repository</a> for a complete list of supported fields.</p>
+            <p>IPTCInfo3 covers the IIM Application Record. Commonly used fields:</p>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Field Name</th>
+                            <th>Description</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code class="inline-code">object name</code></td>
+                            <td>Title or name of the image</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">caption/abstract</code></td>
+                            <td>Description of the image content</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">keywords</code></td>
+                            <td>Searchable keywords (duplicates prevented)</td>
+                            <td>List</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">creator</code><span class="new-dot">2.3.2+</span></td>
+                            <td>Creator/photographer (alias for <code class="inline-code">by-line</code>)</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">by-line</code></td>
+                            <td>Creator/photographer name</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">credit line</code></td>
+                            <td>Credit/provider information (IPTC Core 1.1)</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">copyright notice</code></td>
+                            <td>Copyright information</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">headline</code></td>
+                            <td>Headline of the content</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">city</code></td>
+                            <td>City where photo was taken</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">country/primary location name</code></td>
+                            <td>Country name</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">job id</code><span class="new-dot">2.4.0+</span></td>
+                            <td>Job identifier</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">unique document id</code><span class="new-dot">2.4.0+</span></td>
+                            <td>Globally unique document identifier</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">document notes</code><span class="new-dot">2.4.0+</span></td>
+                            <td>Workflow / document notes</td>
+                            <td>String</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">destination</code></td>
+                            <td>Destination/transmission reference (alias)</td>
+                            <td>String</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>v2.4.0 also added the audio block (<code class="inline-code">audio type</code>, <code class="inline-code">audio duration</code>, …), <code class="inline-code">object type reference</code>, <code class="inline-code">classify state</code>, <code class="inline-code">catalog sets</code>, and more. See the <a href="https://github.com/james-see/iptcinfo3/blob/master/CHANGELOG.md">changelog</a> for the full list.</p>
         </section>
 
         <section id="changelog">
-            <h2>What's New in v2.3.0</h2>
-            <div class="changelog">
-                <h4>🐛 Bug Fixes</h4>
-                <ul>
-                    <li>Fixed keywords and list fields to prevent duplicate values - deduplicates on append and save</li>
-                    <li>Removed outdated VERSION = 1.9 comment from code</li>
-                </ul>
+            <h2>What's New</h2>
 
+            <div class="release">
+                <h3>v2.4.0 <span class="new-dot">latest</span></h3>
                 <h4>✨ New Features</h4>
                 <ul>
-                    <li>Added LICENSE file with dual Artistic-1.0 / GPL-1.0+ license</li>
-                    <li>Added <code>UniqueList</code> class for list fields that automatically prevents duplicates</li>
+                    <li><strong>19 missing IIM fields added</strong> — object type/attribute reference, audio block (150–154), document IDs (184–188), prefs, classify state, similarity index, document notes/history, EXIF camera info, catalog sets</li>
                 </ul>
             </div>
 
-            <h2>Previous: v2.2.0</h2>
-            <div class="changelog">
-                <h4>🐛 Bug Fixes</h4>
-                <ul>
-                    <li>Fixed charset recognition for ISO 2022 escape sequences (UTF-8 as <code>\x1b%G</code>)</li>
-                    <li>Added validation for float/NaN values to prevent TypeError during save operations</li>
-                    <li>Fixed inconsistent license statements across files</li>
-                    <li>Improved logging levels when <code>force=True</code> is used</li>
-                </ul>
-
+            <div class="release">
+                <h3>v2.3.2</h3>
                 <h4>✨ New Features</h4>
                 <ul>
-                    <li>Added 'credit line' field support per IPTC Core 1.1 (backward compatible with 'credit')</li>
-                    <li>Added 'destination' field as alias for compatibility with gThumb and exiftool</li>
-                </ul>
-
-                <h4>🚀 Build System Modernization</h4>
-                <ul>
-                    <li>Migrated to modern <code>pyproject.toml</code> from legacy <code>setup.py</code></li>
-                    <li>Now uses <code>uv</code> and <code>hatchling</code> for building (PEP 517/518 compliant)</li>
-                    <li>Supports Python 3.8 through 3.13</li>
+                    <li><strong><code>creator</code> alias</strong> for <code>by-line</code> per IPTC Core — <code>info['creator']</code> now works for reading and writing</li>
                 </ul>
             </div>
+
+            <div class="release">
+                <h3>v2.3.1</h3>
+                <h4>🔄 Compatibility</h4>
+                <ul>
+                    <li><strong>Python 3.10–3.15 support</strong> — verified on 3.14 and 3.15, CI matrix across all six versions</li>
+                    <li>Dropped EOL interpreters 3.8 and 3.9</li>
+                    <li>Fixed <code>SyntaxWarning</code> in <code>file_is_jpeg()</code> and the pytest config so bare <code>pytest</code> collects tests</li>
+                </ul>
+            </div>
+
+            <p><a href="https://github.com/james-see/iptcinfo3/blob/master/CHANGELOG.md">Full changelog →</a></p>
         </section>
 
         <section id="examples">
             <h2>Advanced Examples</h2>
-            
+
             <h3>Batch Processing</h3>
             <pre><code>import os
 from iptcinfo3 import IPTCInfo
@@ -469,7 +699,7 @@ from iptcinfo3 import IPTCInfo
 for filename in os.listdir('photos'):
     if filename.lower().endswith('.jpg'):
         info = IPTCInfo(f'photos/{filename}', force=True)
-        info['copyright notice'] = '© 2024 Your Name'
+        info['copyright notice'] = '© 2026 Your Name'
         info['keywords'].append('batch-processed')
         info.save()
         print(f"Processed {filename}")</code></pre>
@@ -488,11 +718,11 @@ info.save()</code></pre>
 
         <section id="resources">
             <h2>Resources</h2>
-            <ul style="list-style: none; padding: 0;">
+            <ul class="resource-list">
                 <li>📦 <a href="https://pypi.org/project/IPTCInfo3/">PyPI Package</a></li>
-                <li>🔧 <a href="https://github.com/jamesacampbell/iptcinfo3">GitHub Repository</a></li>
-                <li>🐛 <a href="https://github.com/jamesacampbell/iptcinfo3/issues">Issue Tracker</a></li>
-                <li>📖 <a href="https://github.com/jamesacampbell/iptcinfo3/blob/master/CHANGELOG.md">Changelog</a></li>
+                <li>🔧 <a href="https://github.com/james-see/iptcinfo3">GitHub Repository</a></li>
+                <li>🐛 <a href="https://github.com/james-see/iptcinfo3/issues">Issue Tracker</a></li>
+                <li>📖 <a href="https://github.com/james-see/iptcinfo3/blob/master/CHANGELOG.md">Changelog</a></li>
                 <li>📋 <a href="https://www.iptc.org/std/photometadata/specification/IPTC-PhotoMetadata">IPTC Specification</a></li>
             </ul>
         </section>
@@ -500,11 +730,11 @@ info.save()</code></pre>
         <section id="contributing">
             <h2>Contributing</h2>
             <p>
-                Contributions are welcome! Please feel free to submit a Pull Request. 
+                Contributions are welcome! Please feel free to submit a Pull Request.
                 For major changes, please open an issue first to discuss what you would like to change.
             </p>
             <p>
-                Check out the <a href="https://github.com/jamesacampbell/iptcinfo3/blob/master/PUBLISHING.md">Publishing Guide</a> 
+                Check out the <a href="https://github.com/james-see/iptcinfo3/blob/master/PUBLISHING.md">Publishing Guide</a>
                 if you're interested in the development workflow.
             </p>
         </section>
@@ -512,12 +742,12 @@ info.save()</code></pre>
         <section id="license">
             <h2>License</h2>
             <p>
-                IPTCInfo3 is dual-licensed under the <strong>Artistic License 1.0</strong> or 
-                <strong>GNU General Public License (GPL) 1.0 or later</strong>. 
+                IPTCInfo3 is dual-licensed under the <strong>Artistic License 1.0</strong> or
+                <strong>GNU General Public License (GPL) 1.0 or later</strong>.
                 You may choose either license.
             </p>
             <p>
-                Original Perl version by Josh Carter, ported to Python by Tamás Gulácsi, 
+                Original Perl version by Josh Carter, ported to Python by Tamás Gulácsi,
                 maintained by James Campbell.
             </p>
         </section>
@@ -526,14 +756,13 @@ info.save()</code></pre>
     <footer>
         <p>Made with ❤️ by the IPTCInfo3 community</p>
         <p>
-            <a href="https://github.com/jamesacampbell/iptcinfo3">GitHub</a> • 
-            <a href="https://pypi.org/project/IPTCInfo3/">PyPI</a> • 
-            <a href="https://github.com/jamesacampbell/iptcinfo3/issues">Issues</a>
+            <a href="https://github.com/james-see/iptcinfo3">GitHub</a> •
+            <a href="https://pypi.org/project/IPTCInfo3/">PyPI</a> •
+            <a href="https://github.com/james-see/iptcinfo3/issues">Issues</a>
         </p>
-        <p style="margin-top: 1rem; opacity: 0.7; font-size: 0.9rem;">
-            © 2024 IPTCInfo3 Contributors. Documentation generated for v2.3.0
+        <p class="fine">
+            © 2026 IPTCInfo3 Contributors. Documentation for v2.4.0
         </p>
     </footer>
 </body>
 </html>
-
