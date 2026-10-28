@@ -26,7 +26,7 @@ import tempfile
 from struct import pack, unpack
 import json
 
-__version__ = '2.3.0'
+__version__ = '2.3.1'
 __author__ = 'Gulácsi, Tamás'
 __updated_by__ = 'Campbell, James'
 
@@ -162,7 +162,7 @@ def file_is_jpeg(fh):
             ered = ff == 0xff
     finally:
         fh.seek(0)
-        return ered
+    return ered
 
 
 def jpeg_get_variable_length(fh):

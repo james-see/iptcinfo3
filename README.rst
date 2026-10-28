@@ -39,7 +39,7 @@ On Gentoo Linux: on `gentoo-zh overlay <https://github.com/microcai/gentoo-zh/tr
 Requirements
 ------------
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 - No external dependencies required
 
 Usage

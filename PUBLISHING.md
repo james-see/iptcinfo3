@@ -23,8 +23,8 @@ uv build
 ```
 
 This will create:
-- `dist/iptcinfo3-2.2.0.tar.gz` (source distribution)
-- `dist/iptcinfo3-2.2.0-py3-none-any.whl` (wheel)
+- `dist/iptcinfo3-2.3.1.tar.gz` (source distribution)
+- `dist/iptcinfo3-2.3.1-py3-none-any.whl` (wheel)
 
 ## Publishing to PyPI
 
@@ -60,7 +60,7 @@ twine upload dist/*
 uv pip install -e .
 
 # Or install from the built wheel
-uv pip install dist/iptcinfo3-2.2.0-py3-none-any.whl
+uv pip install dist/iptcinfo3-2.3.1-py3-none-any.whl
 ```
 
 ### Test from TestPyPI
@@ -83,7 +83,7 @@ To release a new version:
 2. Update version in `pyproject.toml`
 3. Update `CHANGELOG.md` with changes
 4. Commit changes
-5. Create a git tag: `git tag v2.2.0`
+5. Create a git tag: `git tag v2.3.1`
 6. Push with tags: `git push origin master --tags`
 7. Build and publish as shown above
 
