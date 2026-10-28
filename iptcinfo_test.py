@@ -74,6 +74,19 @@ def test_IPTCData():
     assert 'nonstandard_69' in data
 
 
+def test_creator_alias_maps_to_byline():
+    data = IPTCData({'creator': 'Ansel Adams'})
+    assert data['by-line'] == 'Ansel Adams'
+    assert data[80] == 'Ansel Adams'
+    assert 'creator' in data
+
+    data['creator'] = 'Imogen Cunningham'
+    assert data['by-line'] == 'Imogen Cunningham'
+
+    data['by-line'] = 'Edward Weston'
+    assert data['creator'] == 'Edward Weston'
+
+
 def test_file_is_jpeg_detects_invalid_file():
     with open('fixtures/Lenna.jpg', 'rb') as fh:
         assert file_is_jpeg(fh)

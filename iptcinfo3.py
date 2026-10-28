@@ -26,7 +26,7 @@ import tempfile
 from struct import pack, unpack
 import json
 
-__version__ = '2.3.1'
+__version__ = '2.3.2'
 __author__ = 'Gulácsi, Tamás'
 __updated_by__ = 'Campbell, James'
 
@@ -554,6 +554,10 @@ class IPTCData(dict):
         # Alias for compatibility with gThumb/exiftool
         elif isinstance(key, str) and key.lower() == 'destination':
             return 103  # Maps to 'original transmission reference'
+        # Alias per IPTC Core: 'creator' is stored as 'by-line' (dataset 80).
+        # (Closes adityamulik's PR #34 idea; raw dataset 1 does not exist in IIM.)
+        elif isinstance(key, str) and key.lower() == 'creator':
+            return 80  # Maps to 'by-line'
         elif key.startswith(cls.c_cust_pre) and key[len(cls.c_cust_pre):].isdigit():
             # example: nonstandard_69 -> 69
             return int(key[len(cls.c_cust_pre):])
