@@ -1,2 +1,2 @@
-pipenv
-pytest
+pipenv>=2023.0
+pytest>=8.0
