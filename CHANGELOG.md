@@ -1,3 +1,21 @@
+## 2.3.1
+
+### Compatibility
+- Verified on Python 3.15 (all 8 tests pass); supports Python 3.10 through 3.15
+- Dropped EOL interpreters: 3.8 (EOL Oct 2024) and 3.9 (EOL Oct 2025); `requires-python` is now `>=3.10`
+- Added PyPI classifiers for Python 3.14 and 3.15
+
+### Bug Fixes
+- Fixed `SyntaxWarning: 'return' in a 'finally' block` in `file_is_jpeg()` (return moved out of `finally`; behavior unchanged, file position still reset)
+
+### Build / Dev
+- Fixed `pytest` config: `testpaths` pointed at a non-existent `tests/` dir so bare `pytest` collected nothing; now points at repo root so `iptcinfo_test.py` is found
+- Bumped Ruff `target-version` from `py38` to `py310`
+- Updated dev pins: `.python-version` 3.9.7 → 3.15, `Pipfile` requires 3.10, CircleCI image `cimg/python:3.9.7` → `cimg/python:3.15`
+- Added GitHub Actions CI matrix (Python 3.10–3.15)
+
+---
+
 ## 2.3.0 (2025-12-02)
 
 ### Bug Fixes
