@@ -1,3 +1,11 @@
+## 2.4.0
+
+### New Features
+- Added 19 missing Application Record (record 2) fields per IPTC IIM 4.1: object type/attribute reference (3, 4), audio block (150–154), document IDs (184–188), PhotoMechanic prefs (221), classify state (225), similarity index (228), document notes/history (230, 231), EXIF camera info (232), catalog sets (255). These previously surfaced as `nonstandard_N`.
+- Note: `custom1–custom20` (datasets 200–219) left unchanged for backward compatibility, even though 200–202 are Object Preview fields per spec.
+
+---
+
 ## 2.3.2
 
 ### New Features

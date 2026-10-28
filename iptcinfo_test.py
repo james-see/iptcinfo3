@@ -87,6 +87,39 @@ def test_creator_alias_maps_to_byline():
     assert data['creator'] == 'Edward Weston'
 
 
+def test_new_spec_fields_map_both_ways():
+    expected = {
+        'object type reference': 3,
+        'object attribute reference': 4,
+        'audio type': 150,
+        'audio sampling rate': 151,
+        'audio sampling resolution': 152,
+        'audio duration': 153,
+        'audio outcue': 154,
+        'job id': 184,
+        'master document id': 185,
+        'short document id': 186,
+        'unique document id': 187,
+        'owner id': 188,
+        'prefs': 221,
+        'classify state': 225,
+        'similarity index': 228,
+        'document notes': 230,
+        'document history': 231,
+        'exif camera info': 232,
+        'catalog sets': 255,
+    }
+    data = IPTCData({name: 'v-%d' % ds for name, ds in expected.items()})
+    for name, ds in expected.items():
+        assert data[name] == 'v-%d' % ds
+        assert data[ds] == 'v-%d' % ds
+        assert name in data
+        assert ds in data
+
+    data['job id'] = 'JOB-42'
+    assert data[184] == 'JOB-42'
+
+
 def test_file_is_jpeg_detects_invalid_file():
     with open('fixtures/Lenna.jpg', 'rb') as fh:
         assert file_is_jpeg(fh)
