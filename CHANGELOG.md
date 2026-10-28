@@ -1,3 +1,10 @@
+## 2.3.2
+
+### New Features
+- Added `'creator'` alias for `'by-line'` (dataset 80) per IPTC Core — `info['creator']` now works for reading and writing (idea from adityamulik's PR #34, corrected: raw dataset 1 does not exist in IIM)
+
+---
+
 ## 2.3.1
 
 ### Compatibility
