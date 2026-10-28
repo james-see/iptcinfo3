@@ -20,5 +20,8 @@ __pycache__
 # pipfile stuff
 Pipfile.lock
 
+# uv stuff
+uv.lock
+
 # virtualenvs
 .venv/
